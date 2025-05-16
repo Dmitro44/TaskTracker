@@ -1,12 +1,13 @@
 using TaskTracker.Application.DTOs;
+using TaskTracker.Application.DTOs.Board;
 using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Domain.Entities;
 
 namespace TaskTracker.Application.Mappers;
 
-public class BoardMapper : IGenericMapper<BoardDto, Board>
+public class BoardMapper : IGenericMapper<BoardShortDto, Board>
 {
-    public Board ToEntity(BoardDto source)
+    public Board ToEntity(BoardShortDto source)
     {
         return new Board
         {
@@ -17,9 +18,9 @@ public class BoardMapper : IGenericMapper<BoardDto, Board>
         };
     }
 
-    public BoardDto ToDto(Board source)
+    public BoardShortDto ToDto(Board source)
     {
-        return new BoardDto
+        return new BoardShortDto
         {
             Id = source.Id,
             Title = source.Title,
@@ -28,7 +29,7 @@ public class BoardMapper : IGenericMapper<BoardDto, Board>
         };
     }
 
-    public void MapPartial(BoardDto source, Board destination)
+    public void MapPartial(BoardShortDto source, Board destination)
     {
         throw new NotImplementedException();
     }

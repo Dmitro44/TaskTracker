@@ -28,4 +28,5 @@ public class AppDbContext : DbContext
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Attachment> Attachments { get; set; }
     public DbSet<CardAssignee> CardAssignees { get; set; }
+    public DbSet<CardLabel> CardLabels { get; set; }
 }

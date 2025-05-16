@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using TaskTracker.Application.DTOs;
-using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
 using Card = TaskTracker.Domain.Entities.Card;
 
@@ -34,11 +32,25 @@ public class CardRepository : ICardRepository
         await _dbContext.SaveChangesAsync(ct);
     }
 
-    public async Task<IEnumerable<Card>> GetAllByColumnIdAsync(Guid columnId, CancellationToken ct)
+    public async Task<IEnumerable<Card>> GetAllByColumnAsync(Guid columnId, CancellationToken ct)
     {
         return await _dbContext.Cards
             .AsNoTracking()
             .Where(c => c.ColumnId == columnId)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IEnumerable<Card>> GetAllAsync(CancellationToken ct)
+    {
+        return await _dbContext.Cards
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    public async Task<IEnumerable<Card>> GetCardsByColumns(IEnumerable<Guid> columnIds, CancellationToken ct)
+    {
+        return await _dbContext.Cards
+            .Where(c => columnIds.Contains(c.ColumnId))
             .ToListAsync(ct);
     }
 }

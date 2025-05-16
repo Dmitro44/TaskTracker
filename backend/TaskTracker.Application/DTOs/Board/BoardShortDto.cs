@@ -1,6 +1,6 @@
-namespace TaskTracker.Application.DTOs;
+namespace TaskTracker.Application.DTOs.Board;
 
-public class BoardDto
+public class BoardShortDto
 {
     public Guid Id { get; set; }
     public string Title { get; set; }

@@ -1,25 +1,26 @@
 using TaskTracker.Application.DTOs;
+using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Domain.Entities;
 
 namespace TaskTracker.Application.Mappers;
 
-public class ColumnMapper : IGenericMapper<ColumnDto, Column>
+public class ColumnMapper : IGenericMapper<ColumnShortDto, Column>
 {
-    public Column ToEntity(ColumnDto source)
+    public Column ToEntity(ColumnShortDto source)
     {
         return new Column
         {
             Id = source.Id,
-            Title = source.Title,
-            Position = source.Position,
-            BoardId = source.BoardId
+            Title = source.Title ?? "",
+            Position = source.Position!.Value,
+            BoardId = source.BoardId!.Value
         };
     }
 
-    public ColumnDto ToDto(Column source)
+    public ColumnShortDto ToDto(Column source)
     {
-        return new ColumnDto
+        return new ColumnShortDto
         {
             Id = source.Id,
             Title = source.Title,
@@ -28,8 +29,13 @@ public class ColumnMapper : IGenericMapper<ColumnDto, Column>
         };
     }
 
-    public void MapPartial(ColumnDto source, Column destination)
+    public void MapPartial(ColumnShortDto source, Column destination)
     {
-        throw new NotImplementedException();
+        if (source.Title != null)
+            destination.Title = source.Title;
+        if (source.Position.HasValue)
+            destination.Position = source.Position.Value;
+        if (source.BoardId.HasValue)
+            destination.BoardId = source.BoardId.Value;
     }
 }

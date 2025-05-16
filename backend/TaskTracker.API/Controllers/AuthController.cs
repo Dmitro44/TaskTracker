@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskTracker.Application.Interfaces;
 using TaskTracker.API.Contracts.Users.Requests;
@@ -16,7 +17,7 @@ public class AuthController : ControllerBase
         _userService = userService;
     }
 
-    [HttpPost("Register")]
+    [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterUserRequest request, CancellationToken ct)
     {
         var userDto = new UserDto
@@ -32,15 +33,36 @@ public class AuthController : ControllerBase
         return Ok();
     }
     
-    [HttpPost("Login")]
+    [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginUserRequest request, CancellationToken ct)
     {
-        var token = await _userService.Login(request.Email, request.Password, ct);
+        try
+        {
+            var token = await _userService.Login(request.Email, request.Password, ct);
 
-        var context = HttpContext;
+            var context = HttpContext;
         
-        context.Response.Cookies.Append("jwt-cookie", token);
+            context.Response.Cookies.Append("jwt-cookie", token);
         
+            return Ok();
+        }
+        catch (Exception e)
+        {
+            return Unauthorized(e);
+        }
+    }
+
+    [HttpPost("logout")]
+    public ActionResult Logout()
+    {
+        HttpContext.Response.Cookies.Delete("jwt-cookie");
+        return Ok();
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
         return Ok();
     }
 }

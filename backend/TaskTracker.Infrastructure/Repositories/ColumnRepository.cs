@@ -26,11 +26,17 @@ public class ColumnRepository : IColumnRepository
         await _dbContext.SaveChangesAsync(ct);
     }
 
-    public async Task<IEnumerable<Column>> GetAllByBoardAsync(Guid boardId, CancellationToken ct)
+    public async Task<IEnumerable<Column?>> GetAllByBoardAsync(Guid boardId, CancellationToken ct)
     {
         return await _dbContext.Columns
             .AsNoTracking()
             .Where(c => c.BoardId == boardId)
             .ToListAsync(ct);
+    }
+
+    public async Task UpdateAsync(Column column, CancellationToken ct)
+    {
+        _dbContext.Columns.Update(column);
+        await _dbContext.SaveChangesAsync(ct);
     }
 }

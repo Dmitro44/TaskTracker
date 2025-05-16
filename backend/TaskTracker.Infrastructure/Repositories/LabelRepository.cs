@@ -33,4 +33,34 @@ public class LabelRepository : ILabelRepository
             .Where(l => l.BoardId == boardId)
             .ToListAsync(ct);
     }
+
+    public async Task AttachLabelToCardAsync(Guid cardId, Guid labelId, CancellationToken ct)
+    {
+        var exists = await  _dbContext.CardLabels
+            .AnyAsync(cl => cl.CardId == cardId && cl.LabelId == labelId, ct);
+        
+        if (exists)
+            throw new InvalidOperationException("Card label already exists");
+
+        var cardLabel = new CardLabel
+        {
+            CardId = cardId,
+            LabelId = labelId
+        };
+        
+        await _dbContext.CardLabels.AddAsync(cardLabel, ct);
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task RemoveLabelFromCardAsync(Guid cardId, Guid labelId, CancellationToken ct)
+    {
+        var cardLabel = await _dbContext.CardLabels
+            .FirstOrDefaultAsync(cl => cl.CardId == cardId && cl.LabelId == labelId, ct);
+
+        if (cardLabel != null)
+        {
+            _dbContext.CardLabels.Remove(cardLabel);
+            await _dbContext.SaveChangesAsync(ct);
+        }
+    }
 }

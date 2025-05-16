@@ -1,34 +1,42 @@
 using Moq;
-using TaskTracker.Application.DTOs;
+using TaskTracker.Application.DTOs.Board;
+using TaskTracker.Application.DTOs.Card;
+using TaskTracker.Application.DTOs.Column;
+using TaskTracker.Application.Interfaces;
 using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
-using Xunit;
 
 namespace TaskTracker.Tests.Application.Services;
 
 public class BoardServiceTests
 {
-    private readonly Mock<IGenericMapper<BoardDto, Board>> _mockBoardMapper;
+    private readonly Mock<IGenericMapper<BoardShortDto, Board>> _mockBoardMapper;
     private readonly Mock<IBoardRepository> _mockBoardRepository;
+    private readonly Mock<IColumnService> _mockColumnService;
+    private readonly Mock<ICardService> _mockCardService;
     private readonly BoardService _boardService;
 
     public BoardServiceTests()
     {
         _mockBoardRepository = new Mock<IBoardRepository>();
-        _mockBoardMapper = new Mock<IGenericMapper<BoardDto, Board>>();
+        _mockBoardMapper = new Mock<IGenericMapper<BoardShortDto, Board>>();
+        _mockColumnService = new Mock<IColumnService>();
+        _mockCardService = new Mock<ICardService>();
         
         _boardService = new BoardService(
             _mockBoardRepository.Object,
-            _mockBoardMapper.Object);
+            _mockBoardMapper.Object,
+            _mockColumnService.Object,
+            _mockCardService.Object);
     }
 
     [Fact]
     public async Task Create_ShouldMapToDtoAndAddToRepository()
     {
         // Arrange
-        var boardDto = new BoardDto
+        var boardDto = new BoardShortDto
         {
             Id = Guid.NewGuid(),
             Title = "Board Title",
@@ -67,10 +75,10 @@ public class BoardServiceTests
             new Board { Id = Guid.NewGuid(), Title = "Another user board", IsPublic = false, OwnerId = userId },
         };
 
-        var expectedDtos = new List<BoardDto>
+        var expectedDtos = new List<BoardShortDto>
         {
-            new BoardDto { Id = userBoards[0].Id, Title = "User's board DTO" },
-            new BoardDto { Id = userBoards[1].Id, Title = "Another user board DTO" }
+            new BoardShortDto { Id = userBoards[0].Id, Title = "User's board DTO" },
+            new BoardShortDto { Id = userBoards[1].Id, Title = "Another user board DTO" }
         };
         
         _mockBoardRepository
@@ -98,5 +106,90 @@ public class BoardServiceTests
             Assert.Equal(expectedDtos[i].Id, resultList[i].Id);
             Assert.Equal(expectedDtos[i].Title, resultList[i].Title);
         }
+    }
+    
+    [Fact]
+    public async Task GetBoardWithColumnsAndCards_ShouldReturnBoardWithColumnsAndCards()
+    {
+        // Arrange
+        var boardId = Guid.NewGuid();
+        var board = new Board
+        {
+            Id = boardId,
+            Title = "Test Board",
+            IsPublic = true
+        };
+
+        var columns = new List<ColumnShortDto>
+        {
+            new ColumnShortDto { Id = Guid.NewGuid(), Title = "Column 1", Position = 1 },
+            new ColumnShortDto { Id = Guid.NewGuid(), Title = "Column 2", Position = 2 }
+        };
+
+        var cardsCol1 = new List<CardDto>
+        {
+            new CardDto { Id = Guid.NewGuid(), Title = "Card 1", Position = 1 },
+            new CardDto { Id = Guid.NewGuid(), Title = "Card 2", Position = 2 }
+        };
+
+        var cardsCol2 = new List<CardDto>
+        {
+            new CardDto { Id = Guid.NewGuid(), Title = "Card 3", Position = 1 }
+        };
+
+        var cardsByColumns = new Dictionary<Guid, IEnumerable<CardDto>>
+        {
+            [columns[0].Id] = cardsCol1,
+            [columns[1].Id] = cardsCol2
+        };
+
+        _mockBoardRepository
+            .Setup(repo => repo.GetByIdAsync(boardId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(board);
+
+        _mockColumnService
+            .Setup(service => service.GetColumns(boardId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(columns);
+
+        _mockCardService
+            .Setup(service => service.GetCardsByColumns(It.IsAny<List<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cardsByColumns);
+
+        // Act
+        var result = await _boardService.GetBoardWithColumnsAndCards(boardId, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(board.Id, result.Id);
+        Assert.Equal(board.Title, result.Title);
+        Assert.Equal(board.IsPublic, result.IsPublic);
+
+        var resultColumns = result.Columns.ToList();
+        Assert.Equal(2, resultColumns.Count);
+
+        Assert.Equal(columns[0].Id, resultColumns[0].Id);
+        Assert.Equal(columns[0].Title, resultColumns[0].Title);
+        Assert.Equal(columns[0].Position, resultColumns[0].Position);
+        Assert.Equal(cardsCol1.Count, resultColumns[0].Cards.ToList().Count);
+
+        Assert.Equal(columns[1].Id, resultColumns[1].Id);
+        Assert.Equal(columns[1].Title, resultColumns[1].Title);
+        Assert.Equal(columns[1].Position, resultColumns[1].Position);
+        Assert.Equal(cardsCol2.Count, resultColumns[1].Cards.ToList().Count);
+    }
+
+    [Fact]
+    public async Task GetBoardWithColumnsAndCards_ShouldThrowIfBoardNotFound()
+    {
+        // Arrange
+        var boardId = Guid.NewGuid();
+
+        _mockBoardRepository
+            .Setup(repo => repo.GetByIdAsync(boardId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Board?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _boardService.GetBoardWithColumnsAndCards(boardId, CancellationToken.None));
     }
 }

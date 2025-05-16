@@ -2,7 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskTracker.API.Contracts.Cards.Requests;
 using TaskTracker.API.Contracts.Cards.Responses;
+using TaskTracker.API.Contracts.CheckLists.Requests;
+using TaskTracker.API.Contracts.Labels.Requests;
 using TaskTracker.Application.DTOs;
+using TaskTracker.Application.DTOs.Card;
+using TaskTracker.Application.DTOs.CheckList;
+using TaskTracker.Application.DTOs.CheckListItem;
 using TaskTracker.Application.Interfaces;
 
 namespace TaskTracker.API.Controllers;
@@ -19,8 +24,8 @@ public class CardController : ControllerBase
         _cardService = cardService;
     }
 
-    [HttpPost("Create")]
-    public async Task<IActionResult> Create(CreateCardRequest request, CancellationToken ct)
+    [HttpPost("create")]
+    public async Task<IActionResult> Create([FromBody] CreateCardRequest request, CancellationToken ct)
     {
         var cardDto = new CardDto
         {
@@ -29,12 +34,12 @@ public class CardController : ControllerBase
             ColumnId = request.ColumnId
         };
 
-        await _cardService.CreateCard(cardDto, ct);
+        var card = await _cardService.CreateCard(cardDto, ct);
 
-        return Ok();
+        return Ok(card);
     }
 
-    [HttpPatch("{id:guid}/Move")]
+    [HttpPatch("{id:guid}/move")]
     public async Task<IActionResult> Move(Guid id, [FromBody] MoveCardRequest request, CancellationToken ct)
     {
         var cardDto = new CardDto
@@ -47,5 +52,69 @@ public class CardController : ControllerBase
         var updatedCard = await _cardService.UpdateCard(cardDto, ct);
         
         return Ok(new MoveCardResponse(updatedCard.Position!.Value, updatedCard.ColumnId!.Value));
+    }
+
+    [HttpGet("getCards")]
+    public async Task<IActionResult> GetCards([FromQuery] Guid boardId, CancellationToken ct)
+    {
+        var cards = await _cardService.GetAllCards(boardId, ct);
+
+        return Ok(cards.ToList());
+    }
+
+    [HttpPost("{cardId:guid}/addLabel")]
+    public async Task<IActionResult> AddLabel(Guid cardId, [FromBody] AddLabelRequest request, CancellationToken ct)
+    {
+        await _cardService.AddLabelToCard(cardId, request.LabelId, ct);
+        return Ok();
+    }
+
+    [HttpDelete("{cardId:guid}/removeLabel/{labelId:guid}")]
+    public async Task<IActionResult> RemoveLabel(Guid cardId, Guid labelId, CancellationToken ct)
+    {
+        await _cardService.RemoveLabelFromCard(cardId, labelId, ct);
+        return Ok();
+    }
+
+    [HttpPost("{cardId:guid}/addCheckList")]
+    public async Task<IActionResult> AddCheckList(Guid cardId, [FromBody] string title, CancellationToken ct)
+    {
+        var checkListDto = new CheckListDto
+        {
+            Title = title,
+            CardId = cardId
+        };
+        
+        await _cardService.AddCheckList(checkListDto, ct);
+        return Ok();
+    }
+
+    
+    [HttpPost("card/cl/{clId:guid}/addCheckListItem")]
+    public async Task<IActionResult> AddCheckListItem(Guid clId, [FromBody] AddCheckListItemRequest request, CancellationToken ct)
+    {
+        var checkListItemDto = new CheckListItemDto
+        {
+            Text = request.Text,
+            Position = request.Position,
+            CheckListId = clId
+        };
+        
+        await _cardService.AddCheckListItem(checkListItemDto, ct);
+
+        return Ok();
+    }
+
+    [HttpPost("card/cl/{clId:guid}/completeCheckListItem/{clItemId:guid}")]
+    public async Task<IActionResult> CompleteCheckListItem(Guid clItemId, CancellationToken ct)
+    {
+        var checkListItemDto = new CheckListItemDto
+        {
+            IsCompleted = true
+        };
+        
+        var updatedClItem =  await _cardService.UpdateCheckListItem(clItemId, checkListItemDto, ct);
+
+        return Ok(updatedClItem);
     }
 }

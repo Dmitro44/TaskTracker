@@ -1,9 +1,12 @@
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using TaskTracker.API.Extensions;
 using TaskTracker.Application.DTOs;
+using TaskTracker.Application.DTOs.Board;
+using TaskTracker.Application.DTOs.Card;
+using TaskTracker.Application.DTOs.CheckList;
+using TaskTracker.Application.DTOs.CheckListItem;
+using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces;
 using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Mappers;
@@ -14,7 +17,6 @@ using TaskTracker.Domain.Interfaces.Repositories;
 using TaskTracker.Infrastructure;
 using TaskTracker.Infrastructure.Auth;
 using TaskTracker.Infrastructure.Repositories;
-using Card = TaskTracker.Domain.Entities.Card;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +32,7 @@ builder.Services.AddCors(options =>
             policy.WithOrigins("http://localhost:3000");
             policy.AllowAnyHeader();
             policy.AllowAnyMethod();
+            policy.AllowCredentials();
         });
     });
 
@@ -45,15 +48,25 @@ builder.Services.AddScoped<IUserService, UserService>();
 
 builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IBoardService, BoardService>();
-builder.Services.AddScoped<IGenericMapper<BoardDto, Board>, BoardMapper>();
+builder.Services.AddScoped<IGenericMapper<BoardShortDto, Board>, BoardMapper>();
 
 builder.Services.AddScoped<IColumnRepository, ColumnRepository>();
 builder.Services.AddScoped<IColumnService, ColumnService>();
-builder.Services.AddScoped<IGenericMapper<ColumnDto, Column>, ColumnMapper>();
+builder.Services.AddScoped<IGenericMapper<ColumnShortDto, Column>, ColumnMapper>();
 
 builder.Services.AddScoped<ICardRepository, CardRepository>();
 builder.Services.AddScoped<ICardService, CardService>();
 builder.Services.AddScoped<IGenericMapper<CardDto, Card>, CardMapper>();
+
+builder.Services.AddScoped<ILabelRepository, LabelRepository>();
+builder.Services.AddScoped<ILabelService, LabelService>();
+builder.Services.AddScoped<IGenericMapper<LabelDto, Label>, LabelMapper>();
+
+builder.Services.AddScoped<ICheckListRepository, CheckListRepository>();
+builder.Services.AddScoped<ICheckListService, CheckListService>();
+builder.Services.AddScoped<IGenericMapper<CheckListDto, CheckList>, CheckListMapper>();
+
+builder.Services.AddScoped<IGenericMapper<CheckListItemDto, CheckListItem>, CheckListItemMapper>();
 
 builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -85,10 +98,10 @@ app.UseCookiePolicy(new CookiePolicyOptions
     Secure = CookieSecurePolicy.Always
 });
 
+app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseCors();
 
 app.MapControllers();
 

@@ -1,4 +1,5 @@
 using TaskTracker.Application.DTOs;
+using TaskTracker.Application.DTOs.Card;
 using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Domain.Entities;
 using Card = TaskTracker.Domain.Entities.Card;

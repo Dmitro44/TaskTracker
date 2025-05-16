@@ -30,4 +30,14 @@ public class LabelService : ILabelService
         
         return labels.Select(l => _labelMapper.ToDto(l));
     }
+
+    public async Task AttachLabelToCard(Guid cardId, Guid labelId, CancellationToken ct)
+    {
+        await _labelRepository.AttachLabelToCardAsync(cardId, labelId, ct);
+    }
+
+    public async Task RemoveLabelFromCard(Guid cardId, Guid labelId, CancellationToken ct)
+    {
+        await _labelRepository.RemoveLabelFromCardAsync(cardId, labelId, ct);
+    }
 }

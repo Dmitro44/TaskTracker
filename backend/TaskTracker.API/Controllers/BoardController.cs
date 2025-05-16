@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using TaskTracker.API.Contracts.Boards.Requests;
 using TaskTracker.API.Contracts.Boards.Responses;
 using TaskTracker.API.Extensions;
-using TaskTracker.Application.DTOs;
+using TaskTracker.Application.DTOs.Board;
 using TaskTracker.Application.Interfaces;
 
 namespace TaskTracker.API.Controllers;
@@ -20,8 +20,8 @@ public class BoardController : ControllerBase
         _boardService = boardService;
     }
     
-    [HttpPost("Create")]
-    public async Task<IActionResult> Create(CreateBoardRequest request, CancellationToken ct)
+    [HttpPost("create")]
+    public async Task<IActionResult> Create([FromBody] CreateBoardRequest request, CancellationToken ct)
     {
         var userId = this.GetCurrentUserId();
 
@@ -30,7 +30,7 @@ public class BoardController : ControllerBase
             return Unauthorized();
         }
         
-        var boardDto = new BoardDto
+        var boardDto = new BoardShortDto
         {
             Title = request.Title,
             IsPublic = request.IsPublic,
@@ -42,12 +42,20 @@ public class BoardController : ControllerBase
         return Ok();
     }
 
-    [HttpGet("GetBoards")]
+    [HttpGet("getBoards")]
     public async Task<IActionResult> GetBoards(CancellationToken ct)
     {
         var userId = this.GetCurrentUserId();
         var boards = await _boardService.GetBoards(userId, ct);
 
         return Ok(new BoardListResponse(boards.ToList()));
+    }
+
+    [HttpGet("{id:guid}/getBoard")]
+    public async Task<IActionResult> GetBoard(Guid id, CancellationToken ct)
+    {
+        var board = await _boardService.GetBoardWithColumnsAndCards(id, ct);
+        
+        return Ok(board);
     }
 }

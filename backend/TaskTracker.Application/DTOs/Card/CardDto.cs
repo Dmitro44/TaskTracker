@@ -1,4 +1,4 @@
-namespace TaskTracker.Application.DTOs;
+namespace TaskTracker.Application.DTOs.Card;
 
 public class CardDto
 {
