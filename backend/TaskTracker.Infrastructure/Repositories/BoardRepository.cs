@@ -33,4 +33,10 @@ public class BoardRepository : IBoardRepository
             .Where(b => b.OwnerId == userId)
             .ToListAsync(ct);
     }
+
+    public async Task UpdateAsync(Board board, CancellationToken ct)
+    {
+        _context.Boards.Update(board);
+        await _context.SaveChangesAsync(ct);
+    }
 }

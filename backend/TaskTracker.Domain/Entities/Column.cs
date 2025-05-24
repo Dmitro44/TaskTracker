@@ -9,6 +9,9 @@ public class Column : IAuditableEntity
     public int Position { get; set; }
     public Guid BoardId { get; set; }
     public Board Board { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+    public string? ArchivedBy { get; set; }
     public DateTime CreatedDate { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime ModifiedDate { get; set; }

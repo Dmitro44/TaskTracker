@@ -14,17 +14,20 @@ public class BoardService : IBoardService
     private readonly IGenericMapper<BoardShortDto, Board> _boardMapper;
     private readonly IColumnService _columnService;
     private readonly ICardService _cardService;
+    private readonly IUserService _userService;
 
     public BoardService(
         IBoardRepository boardRepository,
         IGenericMapper<BoardShortDto, Board> boardMapper,
         IColumnService columnService,
-        ICardService cardService)
+        ICardService cardService,
+        IUserService userService)
     {
         _boardRepository = boardRepository;
         _boardMapper = boardMapper;
         _columnService = columnService;
         _cardService = cardService;
+        _userService = userService;
     }
     
     public async Task Create(BoardShortDto shortDto, CancellationToken ct)
@@ -66,5 +69,33 @@ public class BoardService : IBoardService
             IsPublic = board.IsPublic,
             Columns = columnsFull.ToList()
         };
+    }
+
+    public async Task ArchiveBoard(Guid boardId, Guid userId, CancellationToken ct)
+    {
+        var board = await _boardRepository.GetByIdAsync(boardId, ct);
+        if (board is null) 
+            throw new InvalidOperationException($"Board to archive with ID {boardId} not found");
+        
+        var user = await _userService.GetById(userId, ct);
+        
+        board.IsArchived = true;
+        board.ArchivedAt = DateTime.UtcNow;
+        board.ArchivedBy = string.Join(" ", user.FirstName, user.LastName);
+
+        await _boardRepository.UpdateAsync(board, ct);
+    }
+
+    public async Task RestoreBoard(Guid boardId, CancellationToken ct)
+    {
+        var board = await _boardRepository.GetByIdAsync(boardId, ct);
+        if (board is null) 
+            throw new InvalidOperationException($"Board to restore with ID {boardId} not found");
+        
+        board.IsArchived = false;
+        board.ArchivedAt = null;
+        board.ArchivedBy = null;
+        
+        await _boardRepository.UpdateAsync(board, ct);
     }
 }

@@ -9,6 +9,10 @@ public class Board : IAuditableEntity
     public bool IsPublic { get; set; }
     public Guid OwnerId { get; set; }
     public User Owner { get; set; }
+
+    public bool IsArchived { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+    public string? ArchivedBy { get; set; }
     public DateTime CreatedDate { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime ModifiedDate { get; set; }

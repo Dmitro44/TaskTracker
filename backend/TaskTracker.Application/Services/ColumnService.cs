@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces;
 using TaskTracker.Application.Interfaces.Mapping;
@@ -10,11 +11,16 @@ public class ColumnService : IColumnService
 {
     private readonly IGenericMapper<ColumnShortDto, Column> _columnMapper;
     private readonly IColumnRepository _columnRepository;
+    private readonly IUserService _userService;
 
-    public ColumnService(IGenericMapper<ColumnShortDto, Column> columnMapper, IColumnRepository columnRepository)
+    public ColumnService(
+        IGenericMapper<ColumnShortDto, Column> columnMapper,
+        IColumnRepository columnRepository,
+        IUserService userService)
     {
         _columnMapper = columnMapper;
         _columnRepository = columnRepository;
+        _userService = userService;
     }
     
     public async Task<Column> Create(ColumnShortDto shortDto, CancellationToken ct)
@@ -85,5 +91,33 @@ public class ColumnService : IColumnService
         _columnMapper.MapPartial(updateColumnDto, columnToUpdate);
         
         await _columnRepository.UpdateAsync(columnToUpdate, ct);
+    }
+
+    public async Task ArchiveColumn(Guid columnId, Guid userId, CancellationToken ct)
+    {
+        var column = await _columnRepository.GetByIdAsync(columnId, ct);
+        if (column is null) 
+            throw new InvalidOperationException($"Column to archive with ID {columnId} not found");
+        
+        var user = await _userService.GetById(userId, ct);
+        
+        column.IsArchived = true;
+        column.ArchivedAt = DateTime.UtcNow;
+        column.ArchivedBy = string.Join(" ", user.FirstName, user.LastName);
+        
+        await _columnRepository.UpdateAsync(column, ct);
+    }
+
+    public async Task RestoreColumn(Guid columnId, CancellationToken ct)
+    {
+        var column = await _columnRepository.GetByIdAsync(columnId, ct);
+        if (column is null)
+            throw new InvalidOperationException($"Column to restore with ID {columnId} not found");
+        
+        column.IsArchived = false;
+        column.ArchivedAt = null;
+        column.ArchivedBy = null;
+        
+        await _columnRepository.UpdateAsync(column, ct);
     }
 }

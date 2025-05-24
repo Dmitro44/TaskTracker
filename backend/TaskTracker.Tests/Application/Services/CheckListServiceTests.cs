@@ -147,7 +147,7 @@ namespace TaskTracker.Tests.Application.Services
             };
 
             _mockCheckListRepository.Setup(r => r.GetItemByIdAsync(itemId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((CheckListItem)null);
+                .ReturnsAsync(null as CheckListItem);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(

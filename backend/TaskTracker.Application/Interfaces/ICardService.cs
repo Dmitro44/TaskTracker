@@ -9,11 +9,15 @@ public interface ICardService
 {
     Task<Card> CreateCard(CardDto dto, CancellationToken ct);
     Task<IEnumerable<CardDto>> GetAllCards(Guid boardId, CancellationToken ct);
+    Task<CardDto> MoveCards(CardDto dto, CancellationToken ct);
     Task<CardDto> UpdateCard(CardDto dto, CancellationToken ct);
+    Task ArchiveCard(Guid cardId, Guid userId, CancellationToken ct);
+    Task RestoreCard(Guid cardId, CancellationToken ct);
     Task AddLabelToCard(Guid cardId, Guid labelId, CancellationToken ct);
     Task<IDictionary<Guid, IEnumerable<CardDto>>> GetCardsByColumns(IEnumerable<Guid> columnIds, CancellationToken ct);
     Task RemoveLabelFromCard(Guid cardId, Guid labelId, CancellationToken ct);
     Task AddCheckList(CheckListDto checkListDto, CancellationToken ct);
     Task AddCheckListItem(CheckListItemDto checkListItemDto, CancellationToken ct);
     Task<CheckListItemDto> UpdateCheckListItem(Guid clItemId, CheckListItemDto checkListItemDto, CancellationToken ct);
+    
 }

@@ -107,7 +107,7 @@ namespace TaskTracker.Tests.Application.Services
             string password = "password123";
 
             _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((User)null);
+                .ReturnsAsync(null as User);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentNullException>(
@@ -149,6 +149,48 @@ namespace TaskTracker.Tests.Application.Services
             _mockUserRepository.Verify(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()), Times.Once);
             _mockPasswordHasher.Verify(h => h.Verify(password, hashedPassword), Times.Once);
             _mockJwtProvider.Verify(j => j.GenerateToken(It.IsAny<User>()), Times.Never);
+        }
+        
+        [Fact]
+        public async Task GetById_ShouldReturnUser_WhenUserExists()
+        {
+            // Arrange
+            var userId = Guid.NewGuid();
+            var user = new User 
+            { 
+                Id = userId, 
+                Username = "Dmitro44",
+                FirstName = "Dmitro",
+                LastName = "Test",
+                Email = "dmitro@example.com"
+            };
+    
+            _mockUserRepository.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(user);
+    
+            // Act
+            var result = await _userService.GetById(userId, CancellationToken.None);
+    
+            // Assert
+            Assert.Equal(user, result);
+            _mockUserRepository.Verify(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task GetById_ShouldThrowInvalidOperationException_WhenUserNotFound()
+        {
+            // Arrange
+            var userId = Guid.NewGuid();
+    
+            _mockUserRepository.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(null as User);
+    
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await _userService.GetById(userId, CancellationToken.None));
+    
+            Assert.Equal($"User with ID {userId} not found", exception.Message);
+            _mockUserRepository.Verify(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }

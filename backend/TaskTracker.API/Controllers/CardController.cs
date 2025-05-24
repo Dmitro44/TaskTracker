@@ -49,7 +49,7 @@ public class CardController : ControllerBase
             ColumnId = request.ToColumnId
         };
 
-        var updatedCard = await _cardService.UpdateCard(cardDto, ct);
+        var updatedCard = await _cardService.MoveCards(cardDto, ct);
         
         return Ok(new MoveCardResponse(updatedCard.Position!.Value, updatedCard.ColumnId!.Value));
     }

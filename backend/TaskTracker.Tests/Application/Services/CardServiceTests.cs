@@ -16,6 +16,7 @@ namespace TaskTracker.Tests.Application.Services
         private readonly Mock<IGenericMapper<CardDto, Card>> _mockCardMapper;
         private readonly Mock<ILabelService> _mockLabelService;
         private readonly Mock<ICheckListService> _mockCheckListService;
+        private readonly Mock<IUserService> _mockUserService;
         private readonly CardService _cardService;
 
         public CardServiceTests()
@@ -24,12 +25,14 @@ namespace TaskTracker.Tests.Application.Services
             _mockCardMapper = new Mock<IGenericMapper<CardDto, Card>>();
             _mockLabelService = new Mock<ILabelService>();
             _mockCheckListService = new Mock<ICheckListService>();
+            _mockUserService = new Mock<IUserService>();
 
             _cardService = new CardService(
                 _mockCardRepository.Object,
                 _mockCardMapper.Object,
                 _mockLabelService.Object,
-                _mockCheckListService.Object);
+                _mockCheckListService.Object,
+                _mockUserService.Object);
         }
 
         [Fact]
@@ -37,7 +40,7 @@ namespace TaskTracker.Tests.Application.Services
         {
             // Arrange
             var cardDto = new CardDto { Id = Guid.NewGuid(), Title = "Test Card" };
-            var card = new Card { Id = cardDto.Id, Title = "Test Card" };
+            var card = new Card { Id = cardDto.Id, Title = cardDto.Title };
 
             _mockCardMapper.Setup(m => m.ToEntity(cardDto))
                 .Returns(card);
@@ -74,10 +77,10 @@ namespace TaskTracker.Tests.Application.Services
             }
 
             // Act
-            var result = await _cardService.GetAllCards(boardId, CancellationToken.None);
+            var result = (await _cardService.GetAllCards(boardId, CancellationToken.None)).ToList();
 
             // Assert
-            Assert.Equal(cardDtos.Count, result.Count());
+            Assert.Equal(cardDtos.Count, result.Count);
             Assert.Equal(cardDtos, result);
             _mockCardRepository.Verify(r => r.GetAllAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -117,7 +120,7 @@ namespace TaskTracker.Tests.Application.Services
             var cardDto = new CardDto { Id = Guid.NewGuid(), Title = "Updated Card" };
 
             _mockCardRepository.Setup(r => r.GetByIdAsync(cardDto.Id, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((Card)null);
+                .ReturnsAsync(null as Card);
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(
@@ -249,6 +252,99 @@ namespace TaskTracker.Tests.Application.Services
             Assert.Contains(cardDtos[1], result[columnIds[0]]);
             Assert.Contains(cardDtos[2], result[columnIds[1]]);
             _mockCardRepository.Verify(r => r.GetCardsByColumns(columnIds, It.IsAny<CancellationToken>()), Times.Once);
+        }
+        
+        [Fact]
+        public async Task ArchiveCard_ShouldSetArchiveFlagAndMetadata()
+        {
+            // Arrange
+            var cardId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            var card = new Card { Id = cardId, Title = "Test Card" };
+            var user = new User { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
+            
+            _mockCardRepository.Setup(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(card);
+            
+            _mockUserService.Setup(s => s.GetById(userId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(user);
+            
+            // Act
+            await _cardService.ArchiveCard(cardId, userId, CancellationToken.None);
+            
+            // Assert
+            Assert.True(card.IsArchived);
+            Assert.NotNull(card.ArchivedAt);
+            Assert.Equal("Ivan Petrov", card.ArchivedBy);
+            
+            _mockCardRepository.Verify(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()), Times.Once);
+            _mockUserService.Verify(s => s.GetById(userId, It.IsAny<CancellationToken>()), Times.Once);
+            _mockCardRepository.Verify(r => r.UpdateAsync(card, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ArchiveCard_ShouldThrowInvalidOperationException_WhenCardNotFound()
+        {
+            // Arrange
+            var cardId = Guid.NewGuid();
+            var userId = Guid.NewGuid();
+            
+            _mockCardRepository.Setup(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(null as Card);
+            
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await _cardService.ArchiveCard(cardId, userId, CancellationToken.None));
+            
+            _mockCardRepository.Verify(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()), Times.Once);
+            _mockUserService.Verify(s => s.GetById(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+            _mockCardRepository.Verify(r => r.UpdateAsync(It.IsAny<Card>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RestoreCard_ShouldClearArchiveFlag()
+        {
+            // Arrange
+            var cardId = Guid.NewGuid();
+            var card = new Card 
+            { 
+                Id = cardId, 
+                Title = "Test Card", 
+                IsArchived = true, 
+                ArchivedAt = DateTime.Parse("2025-05-16 21:58:31"), 
+                ArchivedBy = "Ivan Petrov" 
+            };
+            
+            _mockCardRepository.Setup(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(card);
+            
+            // Act
+            await _cardService.RestoreCard(cardId, CancellationToken.None);
+            
+            // Assert
+            Assert.False(card.IsArchived);
+            Assert.Null(card.ArchivedAt);
+            Assert.Null(card.ArchivedBy);
+            
+            _mockCardRepository.Verify(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()), Times.Once);
+            _mockCardRepository.Verify(r => r.UpdateAsync(card, It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RestoreCard_ShouldThrowInvalidOperationException_WhenCardNotFound()
+        {
+            // Arrange
+            var cardId = Guid.NewGuid();
+            
+            _mockCardRepository.Setup(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(null as Card);
+            
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await _cardService.RestoreCard(cardId, CancellationToken.None));
+            
+            _mockCardRepository.Verify(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()), Times.Once);
+            _mockCardRepository.Verify(r => r.UpdateAsync(It.IsAny<Card>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

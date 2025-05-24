@@ -1,5 +1,6 @@
 using Moq;
 using TaskTracker.Application.DTOs.Column;
+using TaskTracker.Application.Interfaces;
 using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
@@ -11,16 +12,20 @@ public class ColumnServiceTests
 {
     private readonly Mock<IGenericMapper<ColumnShortDto, Column>> _mockColumnMapper;
     private readonly Mock<IColumnRepository> _mockColumnRepository;
+    private readonly Mock<IUserService> _mockUserService;
     private readonly ColumnService _columnService;
 
     public ColumnServiceTests()
     {
         _mockColumnRepository = new Mock<IColumnRepository>();
         _mockColumnMapper = new Mock<IGenericMapper<ColumnShortDto, Column>>();
+        _mockUserService = new Mock<IUserService>();
+        
         
         _columnService = new ColumnService(
             _mockColumnMapper.Object,
-            _mockColumnRepository.Object);
+            _mockColumnRepository.Object,
+            _mockUserService.Object);
     }
     
     [Fact]
@@ -228,5 +233,98 @@ public class ColumnServiceTests
         _mockColumnMapper.Verify(m => m.MapPartial(moveDto, col3), Times.Once);
         Assert.Equal(col3.Id, result.Id);
         Assert.Equal(moveDto.Position, result.Position);
+    }
+    
+    [Fact]
+    public async Task ArchiveColumn_ShouldSetArchiveFlagAndMetadata()
+    {
+        // Arrange
+        var columnId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var column = new Column { Id = columnId, Title = "Test Column" };
+        var user = new User { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
+        
+        _mockColumnRepository.Setup(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(column);
+        
+        _mockUserService.Setup(s => s.GetById(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        
+        // Act
+        await _columnService.ArchiveColumn(columnId, userId, CancellationToken.None);
+        
+        // Assert
+        Assert.True(column.IsArchived);
+        Assert.NotNull(column.ArchivedAt);
+        Assert.Equal("Ivan Petrov", column.ArchivedBy);
+        
+        _mockColumnRepository.Verify(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockUserService.Verify(s => s.GetById(userId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockColumnRepository.Verify(r => r.UpdateAsync(column, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ArchiveColumn_ShouldThrowInvalidOperationException_WhenColumnNotFound()
+    {
+        // Arrange
+        var columnId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        
+        _mockColumnRepository.Setup(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(null as Column);
+        
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await _columnService.ArchiveColumn(columnId, userId, CancellationToken.None));
+        
+        _mockColumnRepository.Verify(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockUserService.Verify(s => s.GetById(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockColumnRepository.Verify(r => r.UpdateAsync(It.IsAny<Column>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RestoreColumn_ShouldClearArchiveFlag()
+    {
+        // Arrange
+        var columnId = Guid.NewGuid();
+        var column = new Column 
+        { 
+            Id = columnId, 
+            Title = "Test Column", 
+            IsArchived = true, 
+            ArchivedAt = DateTime.UtcNow, 
+            ArchivedBy = "Ivan Petrov" 
+        };
+        
+        _mockColumnRepository.Setup(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(column);
+        
+        // Act
+        await _columnService.RestoreColumn(columnId, CancellationToken.None);
+        
+        // Assert
+        Assert.False(column.IsArchived);
+        Assert.Null(column.ArchivedAt);
+        Assert.Null(column.ArchivedBy);
+        
+        _mockColumnRepository.Verify(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockColumnRepository.Verify(r => r.UpdateAsync(column, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreColumn_ShouldThrowInvalidOperationException_WhenColumnNotFound()
+    {
+        // Arrange
+        var columnId = Guid.NewGuid();
+        
+        _mockColumnRepository.Setup(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(null as Column);
+        
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await _columnService.RestoreColumn(columnId, CancellationToken.None));
+        
+        _mockColumnRepository.Verify(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockColumnRepository.Verify(r => r.UpdateAsync(It.IsAny<Column>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -55,4 +55,12 @@ public class UserService : IUserService
 
         return token;
     }
+
+    public async Task<User> GetById(Guid userId, CancellationToken ct)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, ct);
+        if (user is null) throw new InvalidOperationException($"User with ID {userId} not found");
+
+        return user;
+    }
 }

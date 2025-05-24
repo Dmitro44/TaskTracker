@@ -16,6 +16,7 @@ public class BoardServiceTests
     private readonly Mock<IBoardRepository> _mockBoardRepository;
     private readonly Mock<IColumnService> _mockColumnService;
     private readonly Mock<ICardService> _mockCardService;
+    private readonly Mock<IUserService> _mockUserService;
     private readonly BoardService _boardService;
 
     public BoardServiceTests()
@@ -24,12 +25,14 @@ public class BoardServiceTests
         _mockBoardMapper = new Mock<IGenericMapper<BoardShortDto, Board>>();
         _mockColumnService = new Mock<IColumnService>();
         _mockCardService = new Mock<ICardService>();
+        _mockUserService = new Mock<IUserService>();
         
         _boardService = new BoardService(
             _mockBoardRepository.Object,
             _mockBoardMapper.Object,
             _mockColumnService.Object,
-            _mockCardService.Object);
+            _mockCardService.Object,
+            _mockUserService.Object);
     }
 
     [Fact]
@@ -191,5 +194,98 @@ public class BoardServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _boardService.GetBoardWithColumnsAndCards(boardId, CancellationToken.None));
+    }
+    
+    [Fact]
+    public async Task ArchiveBoard_ShouldSetArchiveFlagAndMetadata()
+    {
+        // Arrange
+        var boardId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var board = new Board { Id = boardId, Title = "Test Board" };
+        var user = new User { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
+        
+        _mockBoardRepository.Setup(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(board);
+        
+        _mockUserService.Setup(s => s.GetById(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        
+        // Act
+        await _boardService.ArchiveBoard(boardId, userId, CancellationToken.None);
+        
+        // Assert
+        Assert.True(board.IsArchived);
+        Assert.NotNull(board.ArchivedAt);
+        Assert.Equal("Ivan Petrov", board.ArchivedBy);
+        
+        _mockBoardRepository.Verify(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockUserService.Verify(s => s.GetById(userId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBoardRepository.Verify(r => r.UpdateAsync(board, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ArchiveBoard_ShouldThrowInvalidOperationException_WhenBoardNotFound()
+    {
+        // Arrange
+        var boardId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        
+        _mockBoardRepository.Setup(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(null as Board);
+        
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await _boardService.ArchiveBoard(boardId, userId, CancellationToken.None));
+        
+        _mockBoardRepository.Verify(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockUserService.Verify(s => s.GetById(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockBoardRepository.Verify(r => r.UpdateAsync(It.IsAny<Board>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RestoreBoard_ShouldClearArchiveFlag()
+    {
+        // Arrange
+        var boardId = Guid.NewGuid();
+        var board = new Board 
+        { 
+            Id = boardId, 
+            Title = "Test Board", 
+            IsArchived = true, 
+            ArchivedAt = DateTime.UtcNow, 
+            ArchivedBy = "Ivan Petrov" 
+        };
+        
+        _mockBoardRepository.Setup(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(board);
+        
+        // Act
+        await _boardService.RestoreBoard(boardId, CancellationToken.None);
+        
+        // Assert
+        Assert.False(board.IsArchived);
+        Assert.Null(board.ArchivedAt);
+        Assert.Null(board.ArchivedBy);
+        
+        _mockBoardRepository.Verify(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBoardRepository.Verify(r => r.UpdateAsync(board, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreBoard_ShouldThrowInvalidOperationException_WhenBoardNotFound()
+    {
+        // Arrange
+        var boardId = Guid.NewGuid();
+        
+        _mockBoardRepository.Setup(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(null as Board);
+        
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await _boardService.RestoreBoard(boardId, CancellationToken.None));
+        
+        _mockBoardRepository.Verify(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()), Times.Once);
+        _mockBoardRepository.Verify(r => r.UpdateAsync(It.IsAny<Board>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

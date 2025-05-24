@@ -14,13 +14,20 @@ public class CardService : ICardService
     private readonly IGenericMapper<CardDto, Card> _cardMapper;
     private readonly ILabelService _labelService;
     private readonly ICheckListService _checkListService;
+    private readonly IUserService _userService;
 
-    public CardService(ICardRepository cardRepository, IGenericMapper<CardDto, Card> cardMapper, ILabelService labelService, ICheckListService checkListService)
+    public CardService(
+        ICardRepository cardRepository,
+        IGenericMapper<CardDto, Card> cardMapper,
+        ILabelService labelService,
+        ICheckListService checkListService,
+        IUserService userService)
     {
         _cardRepository = cardRepository;
         _cardMapper = cardMapper;
         _labelService = labelService;
         _checkListService = checkListService;
+        _userService = userService;
     }
     
     public async Task<Card> CreateCard(CardDto dto, CancellationToken ct)
@@ -39,6 +46,41 @@ public class CardService : ICardService
         return cards.Select(c => _cardMapper.ToDto(c));
     }
 
+    public async Task<CardDto> MoveCards(CardDto dto, CancellationToken ct)
+    {
+        var card = await _cardRepository.GetByIdAsync(dto.Id, ct);
+        if (card is null)
+            throw new InvalidOperationException($"Card with ID {dto.Id} not found");
+
+        var columnCards = await _cardRepository.GetAllByColumnAsync(card.ColumnId, ct);
+
+        var oldPosition = card.Position;
+        var newPosition = dto.Position;
+
+        foreach (var c in columnCards)
+        {
+            if (c.Id == card.Id) continue;
+            if (oldPosition < newPosition)
+            {
+                if (c.Position > oldPosition && c.Position <= newPosition)
+                    c.Position--;
+            }
+            else
+            {
+                if (c.Position >= newPosition && c.Position < oldPosition)
+                    c.Position++;
+            }
+            
+            await _cardRepository.UpdateAsync(c, ct);
+        }
+        
+        _cardMapper.MapPartial(dto, card);
+
+        await _cardRepository.UpdateAsync(card, ct);
+
+        return _cardMapper.ToDto(card);
+    }
+
     public async Task<CardDto> UpdateCard(CardDto dto, CancellationToken ct)
     {
         var card = await _cardRepository.GetByIdAsync(dto.Id, ct);
@@ -49,6 +91,34 @@ public class CardService : ICardService
         await _cardRepository.UpdateAsync(card, ct);
         
         return _cardMapper.ToDto(card);
+    }
+
+    public async Task ArchiveCard(Guid cardId, Guid userId, CancellationToken ct)
+    {
+        var card = await _cardRepository.GetByIdAsync(cardId, ct);
+        if (card is null)
+            throw new InvalidOperationException($"Card to archive with ID {cardId} not found");
+        
+        var user = await _userService.GetById(userId, ct);
+        
+        card.IsArchived = true;
+        card.ArchivedAt = DateTime.UtcNow;
+        card.ArchivedBy = string.Join(" ", user.FirstName, user.LastName);
+        
+        await _cardRepository.UpdateAsync(card, ct);
+    }
+
+    public async Task RestoreCard(Guid cardId, CancellationToken ct)
+    {
+        var card = await _cardRepository.GetByIdAsync(cardId, ct);
+        if (card is null)
+            throw new InvalidOperationException($"Card to restore with ID {cardId} not found");
+        
+        card.IsArchived = false;
+        card.ArchivedAt = null;
+        card.ArchivedBy = null;
+        
+        await _cardRepository.UpdateAsync(card, ct);
     }
 
     public async Task AddLabelToCard(Guid cardId, Guid labelId, CancellationToken ct)

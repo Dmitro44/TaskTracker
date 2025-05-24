@@ -10,6 +10,10 @@ public class Card : IAuditableEntity
     public DateTime? DueDate { get; set; }
     public Guid ColumnId { get; set; }
     public Column Column { get; set; }
+
+    public bool IsArchived { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+    public string? ArchivedBy { get; set; }
     public DateTime CreatedDate { get; set; }
     public string? CreatedBy { get; set; }
     public DateTime ModifiedDate { get; set; }

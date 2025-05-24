@@ -10,4 +10,6 @@ public interface IColumnService
     Task<IEnumerable<ColumnShortDto>> GetColumns(Guid boardId, CancellationToken ct);
     Task<ColumnShortDto> MoveColumns(ColumnShortDto columnDto, CancellationToken ct);
     Task UpdateColumn(ColumnShortDto updateColumnDto, CancellationToken ct);
+    Task ArchiveColumn(Guid columnId, Guid userId, CancellationToken ct);
+    Task RestoreColumn(Guid columnId, CancellationToken ct);
 }
