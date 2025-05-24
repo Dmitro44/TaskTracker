@@ -13,17 +13,18 @@ export interface RegisterRequest {
 }
 
 export const login = async (loginRequest: LoginRequest) => {
-    await fetch("https://localhost:7165/api/Auth/Login", {
+    return await fetch("https://localhost:7165/api/Auth/login", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(loginRequest)
     })
 }
 
 export const register = async (registerRequest: RegisterRequest) => {
-    await fetch("https://localhost:7165/api/Auth/Register", {
+    await fetch("https://localhost:7165/api/Auth/register", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",

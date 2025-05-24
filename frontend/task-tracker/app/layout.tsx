@@ -1,4 +1,4 @@
-import { Provider } from '@/components/ui/provider'
+import { Providers } from './providers'
 
 export default function RootLayout({
   children,
@@ -6,11 +6,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body>
-        <Provider>
+        <Providers>
           {children}
-        </Provider>
+        </Providers>
       </body>
     </html>
   );

@@ -7,6 +7,7 @@ import {InputField} from "@/app/components/InputField";
 import {EmailIcon, LockIcon} from "@chakra-ui/icons"
 import {object, string} from "yup"
 import {login} from "@/app/services/auth";
+import {useRouter} from "next/navigation";
 
 const schema = object().shape({
     email: string()
@@ -16,6 +17,8 @@ const schema = object().shape({
 })
 
 export default function LoginPage() {
+    const router = useRouter();
+
     return (
         <Center h="100vh" bg="blue.200">
             <Stack boxShadow="md" bg="whiteAlpha.900" p="20" rounded="md" >
@@ -26,10 +29,14 @@ export default function LoginPage() {
                 <Formik
                     validationSchema={schema}
                     onSubmit={ async (values, { setSubmitting }) => {
-                        await login({
+                        const res = await login({
                             email: values.email,
                             password: values.password
                         });
+
+                        if (res.ok) {
+                            router.push("/dashboard");
+                        }
 
                         setSubmitting(false);
                     }}
