@@ -16,19 +16,6 @@ export type ColumnFull = {
     cards: Card[]
 }
 
-export async function getColumns(boardId: string): Promise<Column[]> {
-    const response = await apiFetch(`https://localhost:7165/api/Column/getColumns?boardId=${boardId}`, {
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.columns;
-}
-
 export async function createColumn({ title, position, boardId } : { title: string, position: number, boardId: string}): Promise<ColumnFull> {
     const res = await apiFetch("https://localhost:7165/api/Column/create", {
         method: "POST",

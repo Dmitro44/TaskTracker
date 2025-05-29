@@ -20,6 +20,7 @@
     "@emotion/styled": "^11.14.0",
     "formik": "^2.4.6",
     "framer-motion": "^12.10.4",
+    "mitt": "^3.0.1",
     "next": "15.3.1",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",

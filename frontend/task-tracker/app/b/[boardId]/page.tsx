@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Flex, Heading, Text, useDisclosure, useToast } from "@chakra-ui/react";
+import {Box, Flex, Heading, Skeleton, Text, useDisclosure, useToast} from "@chakra-ui/react";
 import { AddIcon } from "@chakra-ui/icons";
 import { getFullBoard, BoardFull } from "../../services/boards";
 import { Column, ColumnFull, createColumn, moveColumn, updateColumn } from "../../services/columns";
-import {Card, createCard, moveCard} from "../../services/cards";
+import { Card, createCard, moveCard } from "../../services/cards";
+import { Label } from "../../services/labels"
 import { CreateColumnModal } from "../../components/board/CreateColumnModal";
 import { CreateCardModal } from "../../components/board/CreateCardModal";
 import { ColumnBox } from "../../components/board/ColumnBox";
@@ -14,8 +15,10 @@ import { DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, P
 import { arrayMove, SortableContext } from "@dnd-kit/sortable"
 import { createPortal } from "react-dom";
 import { CardBox } from "../../components/board/CardBox";
+import { eventBus } from "@/app/utils/eventBus";
 
 export default function BoardPage({ params }: { params: Promise<{ boardId: string }> }) {
+
   const [board, setBoard] = useState<BoardFull | null>(null);
   const [columns, setColumns] = useState<Column[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
@@ -26,6 +29,8 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
   const [activeColumn, setActiveColumn] = useState<ColumnFull | null>(null);
 
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+
+  const { boardId } = React.use(params);
 
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
@@ -46,8 +51,6 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
     onOpen: onCardModalOpen,
     onClose: onCardModalClose,
   } = useDisclosure();
-
-  const { boardId } = React.use(params);
 
   // Загрузка доски
   const fetchBoard = async () => {
@@ -82,6 +85,30 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
     fetchBoard();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId]);
+  
+  useEffect(() => {
+    const handleCardLabelsUpdate = (event: { cardId: string; boardId: string; newLabels: Label[]; }) => {
+      
+      if (event.boardId != boardId) {
+        return;
+      }
+      
+      setCards(prevCards => 
+          prevCards.map(card =>
+              card.id === event.cardId
+              ? {...card, labels: event.newLabels}
+              : card
+          )
+      );
+      toast({ title: `Метки для карточки обновлены`, status: "info", duration: 2000, isClosable: true });
+    }
+    
+    eventBus.on(`cardLabelsUpdated`, handleCardLabelsUpdate);
+    
+    return () => {
+      eventBus.off(`cardLabelsUpdated`, handleCardLabelsUpdate);
+    }
+  }, [boardId, toast]);
 
   // Добавление колонки
   const handleAddColumn = async () => {
@@ -137,6 +164,7 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
       title: newCardTitle,
       position: cards.filter(c => c.columnId === cardModalColumnId).length,
       columnId: cardModalColumnId,
+      labels: [],
     };
 
     setCards(prev => [...prev, optimisticCard]);
@@ -146,11 +174,11 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
     onCardModalClose();
 
     try {
-      const createdCard = await createCard({
-        title: newCardTitle,
-        position: optimisticCard.position,
-        columnId: cardModalColumnId,
-      });
+      const createdCard = await createCard(
+        newCardTitle,
+        optimisticCard.position,
+        cardModalColumnId,
+      );
 
       // Обнови временную карточку на настоящую (по id)
       setCards(prev => 
@@ -166,7 +194,10 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
   if (loading) {
     return (
       <Flex height="100vh" align="center" justify="center">
-        <Text>Загрузка...</Text>
+        <Box w="80%" h="80%">
+          <Skeleton height="40px" mb={4} />
+          <Skeleton height="200px" />
+        </Box>
       </Flex>
     );
   }
@@ -185,9 +216,9 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
           <Heading size="lg">{board.title}</Heading>
         </Flex>
         <Box flex="1" overflowX="auto" p={6} bg="gray.50">
-          <DndContext 
+          <DndContext
             sensors={sensors}
-            onDragStart={onDragStart} 
+            onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             onDragOver={onDragOver}
           >
@@ -292,73 +323,10 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
     if (!over) return;
 
     if (active.data.current?.type === "Column" && over.data.current?.type === "Column") {
-      const activeId = active.id;
-      const overId = over.id;
-
-      if (activeId === overId) return;
-
-      setColumns((columns) => {
-        const activeColumnIndex = columns.findIndex(
-          (col) => col.id === activeId
-        );
-
-        const overColumnIndex = columns.findIndex(
-          (col) => col.id === overId
-        );
-
-        moveColumn({ columnId: activeId as string, position: overColumnIndex});
-
-        return arrayMove(columns, activeColumnIndex, overColumnIndex);
-      })
+      handleColumnDrag(active.id.toString(), over.id.toString());
     }
     else if (active.data.current?.type === "Card") {
-      const activeId = active.id;
-
-      if (over.data.current?.type === "Card") {
-        const overId = over.id;
-        const overCard = cards.find(c => c.id === overId);
-
-        if (!overCard) return;
-
-        const overCardPosition = cards
-            .filter(card => card.columnId === overCard.columnId)
-            .findIndex(card => card.id === overCard.id);
-
-        setCards(prevCards => {
-          const activeIndex = prevCards.findIndex(c => c.id === activeId);
-          const overIndex = prevCards.findIndex(c => c.id === overId);
-
-
-          const newCards = [...prevCards];
-          newCards[activeIndex] = {
-            ...newCards[activeIndex],
-            columnId: cards[overIndex].columnId
-          };
-
-          return arrayMove(newCards, activeIndex, overIndex);
-        })
-
-        moveCard({cardId: activeId.toString(), toColumnId: overCard.columnId, position: overCardPosition});
-      }
-      else if (over.data.current?.type === "Column") {
-        const overColumnId = over.id;
-
-        setCards((cards) => {
-          const activeIndex = cards.findIndex((c) => c.id === activeId)
-
-          cards[activeIndex].columnId = overColumnId.toString();
-
-          return arrayMove(cards, activeIndex, activeIndex);
-        })
-
-        const newPosition = cards.filter(c => c.columnId === overColumnId).length;
-
-        moveCard({
-          cardId: activeId.toString(),
-          toColumnId: overColumnId.toString(),
-          position: newPosition,
-        })
-      }
+      handleCardDrag(active.id.toString(), over.id.toString(), over.data.current?.type);
     }
   }
 
@@ -407,6 +375,54 @@ export default function BoardPage({ params }: { params: Promise<{ boardId: strin
 
         return arrayMove(newCards, activeIndex, overIndex);
       })
+    }
+  }
+
+  function handleColumnDrag(activeId: string, overId: string) {
+    if (activeId === overId) return;
+
+    setColumns((columns) => {
+      const activeIndex = columns.findIndex((col) => col.id === activeId);
+      const overIndex = columns.findIndex((col) => col.id === overId);
+
+      moveColumn({ columnId: activeId, position: overIndex });
+      return arrayMove(columns, activeIndex, overIndex);
+    });
+  }
+
+  function handleCardDrag(activeId: string, overId: string, overType: string) {
+    const activeCard = cards.find((c) => c.id === activeId);
+    if (!activeCard) return;
+
+    if (overType === "Card") {
+      const overCard = cards.find((c) => c.id === overId);
+      if (!overCard) return;
+
+      const newColumnId = overCard.columnId;
+      const newPosition = cards.filter((c) => c.columnId === newColumnId).findIndex((c) => c.id === overId);
+
+      setCards((prevCards) => {
+        const activeIndex = prevCards.findIndex((c) => c.id === activeId);
+        const overIndex = prevCards.findIndex((c) => c.id === overId);
+
+        const updatedCards = [...prevCards];
+        updatedCards[activeIndex] = { ...updatedCards[activeIndex], columnId: newColumnId };
+        return arrayMove(updatedCards, activeIndex, overIndex);
+      });
+
+      moveCard(activeId, newColumnId, newPosition);
+    } else if (overType === "Column") {
+      const newColumnId = overId;
+      const newPosition = cards.filter((c) => c.columnId === newColumnId).length;
+
+      setCards((prevCards) => {
+        const activeIndex = prevCards.findIndex((c) => c.id === activeId);
+        const updatedCards = [...prevCards];
+        updatedCards[activeIndex] = { ...updatedCards[activeIndex], columnId: newColumnId };
+        return updatedCards;
+      });
+
+      moveCard(activeId, newColumnId, newPosition);
     }
   }
 
