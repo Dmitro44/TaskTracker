@@ -1,38 +1,35 @@
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using TaskTracker.API.Authentication;
 using TaskTracker.Infrastructure.Auth;
 
 namespace TaskTracker.API.Extensions;
 
 public static class ApiExtensions
 {
-    public static void AddApiAuthentication(this IServiceCollection services, IConfiguration configuration)
+    public static void AddRedisSessionAuth(this IServiceCollection services, IConfiguration configuration)
     {
-        var jwtOptions = configuration.GetSection("JwtOptions").Get<JwtOptions>();
-        
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new()
-                {
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions!.SecretKey))
-                };
+        services.AddStackExchangeRedisCache(options =>
+        {
+            options.Configuration = configuration.GetConnectionString("RedisConnection");
+        });
 
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        context.Token = context.Request.Cookies["jwt-cookie"];
-                        return Task.CompletedTask;
-                    }
-                };
-            });
+        services.AddSession(options =>
+        {
+            options.IdleTimeout = TimeSpan.FromMinutes(30);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SameSite = SameSiteMode.Strict;
+        });
+
+        services.AddHttpContextAccessor();
+
+        services.AddAuthentication("RedisSession")
+            .AddScheme<AuthenticationSchemeOptions, SessionAuthHandler>("RedisSession", _ => { });
         
         services.AddAuthorization();
     }

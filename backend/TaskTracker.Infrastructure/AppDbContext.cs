@@ -29,4 +29,22 @@ public class AppDbContext : DbContext
     public DbSet<Attachment> Attachments { get; set; }
     public DbSet<CardAssignee> CardAssignees { get; set; }
     public DbSet<CardLabel> CardLabels { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<CardLabel>()
+            .HasKey(cl => new { cl.CardId, cl.LabelId });
+        
+        modelBuilder.Entity<CardLabel>()
+            .HasOne(cl => cl.Card)
+            .WithMany(cl => cl.CardLabels)
+            .HasForeignKey(cl => cl.CardId);
+        
+        modelBuilder.Entity<CardLabel>()
+            .HasOne(cl => cl.Label)
+            .WithMany(cl => cl.CardLabels)
+            .HasForeignKey(cl => cl.LabelId);
+    }
 }

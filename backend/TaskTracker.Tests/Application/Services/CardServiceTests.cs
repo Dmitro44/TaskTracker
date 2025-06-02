@@ -1,4 +1,5 @@
 using Moq;
+using TaskTracker.Application.DTOs;
 using TaskTracker.Application.DTOs.Card;
 using TaskTracker.Application.DTOs.CheckList;
 using TaskTracker.Application.DTOs.CheckListItem;
@@ -261,7 +262,7 @@ namespace TaskTracker.Tests.Application.Services
             var cardId = Guid.NewGuid();
             var userId = Guid.NewGuid();
             var card = new Card { Id = cardId, Title = "Test Card" };
-            var user = new User { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
+            var user = new UserDto { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
             
             _mockCardRepository.Setup(r => r.GetByIdAsync(cardId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(card);

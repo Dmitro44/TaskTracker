@@ -1,4 +1,5 @@
 using Moq;
+using TaskTracker.Application.DTOs;
 using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces;
 using TaskTracker.Application.Interfaces.Mapping;
@@ -242,7 +243,7 @@ public class ColumnServiceTests
         var columnId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var column = new Column { Id = columnId, Title = "Test Column" };
-        var user = new User { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
+        var user = new UserDto { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
         
         _mockColumnRepository.Setup(r => r.GetByIdAsync(columnId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(column);

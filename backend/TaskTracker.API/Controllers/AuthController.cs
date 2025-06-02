@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
+using Serialization.Json;
 using TaskTracker.Application.Interfaces;
 using TaskTracker.API.Contracts.Users.Requests;
 using TaskTracker.Application.DTOs;
@@ -11,10 +13,12 @@ namespace TaskTracker.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IDistributedCache _distributedCache;
 
-    public AuthController(IUserService userService)
+    public AuthController(IUserService userService, IDistributedCache distributedCache)
     {
         _userService = userService;
+        _distributedCache = distributedCache;
     }
 
     [HttpPost("register")]
@@ -22,7 +26,7 @@ public class AuthController : ControllerBase
     {
         var userDto = new UserDto
         {
-            UserName = request.UserName,
+            Username = request.UserName,
             FirstName = request.FirstName,
             LastName = request.LastName,
             Email = request.Email
@@ -38,12 +42,30 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var token = await _userService.Login(request.Email, request.Password, ct);
+            var userDto = await _userService.ValidateCredentials(request.Email, request.Password, ct);
 
-            var context = HttpContext;
-        
-            context.Response.Cookies.Append("jwt-cookie", token);
-        
+            string sessionId = Guid.NewGuid().ToString();
+
+            var serializer = new JsonSerializer();
+
+            await _distributedCache.SetStringAsync(
+                $"session:{sessionId}",
+                serializer.Serialize(userDto),
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24),
+                    SlidingExpiration = TimeSpan.FromMinutes(30)
+                },
+                ct);
+
+            HttpContext.Response.Cookies.Append("session-id", sessionId, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                MaxAge = TimeSpan.FromHours(24)
+            });
+
             return Ok();
         }
         catch (Exception e)
@@ -53,9 +75,15 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("logout")]
-    public ActionResult Logout()
+    public async Task<ActionResult> Logout(CancellationToken ct)
     {
-        HttpContext.Response.Cookies.Delete("jwt-cookie");
+        if (Request.Cookies.TryGetValue("session-id", out var sessionId))
+        {
+            await _distributedCache.RemoveAsync($"session:{sessionId}", ct);
+            
+            Response.Cookies.Delete("session-id");
+        }
+        
         return Ok();
     }
 

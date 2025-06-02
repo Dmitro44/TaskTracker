@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.EntityFrameworkCore;
+using TaskTracker.API.Authentication;
 using TaskTracker.API.Extensions;
 using TaskTracker.Application.DTOs;
 using TaskTracker.Application.DTOs.Board;
@@ -23,7 +24,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("JwtOptions"));
+// builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("JwtOptions"));
 
 builder.Services.AddCors(options =>
     {
@@ -36,7 +37,9 @@ builder.Services.AddCors(options =>
         });
     });
 
-builder.Services.AddApiAuthentication(builder.Configuration);
+// builder.Services.AddApiAuthentication(builder.Configuration);
+builder.Services.AddRedisSessionAuth(builder.Configuration);
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -45,6 +48,7 @@ builder.Services.AddDbContext<AppDbContext>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IGenericMapper<UserDto, User>, UserMapper>();
 
 builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IBoardService, BoardService>();
@@ -68,7 +72,7 @@ builder.Services.AddScoped<IGenericMapper<CheckListDto, CheckList>, CheckListMap
 
 builder.Services.AddScoped<IGenericMapper<CheckListItemDto, CheckListItem>, CheckListItemMapper>();
 
-builder.Services.AddScoped<IJwtProvider, JwtProvider>();
+// builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
 
@@ -99,6 +103,8 @@ app.UseCookiePolicy(new CookiePolicyOptions
 });
 
 app.UseCors();
+
+app.UseSession();
 
 app.UseAuthentication();
 app.UseAuthorization();

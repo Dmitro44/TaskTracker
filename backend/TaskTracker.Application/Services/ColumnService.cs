@@ -99,11 +99,11 @@ public class ColumnService : IColumnService
         if (column is null) 
             throw new InvalidOperationException($"Column to archive with ID {columnId} not found");
         
-        var user = await _userService.GetById(userId, ct);
+        var userDto = await _userService.GetById(userId, ct);
         
         column.IsArchived = true;
         column.ArchivedAt = DateTime.UtcNow;
-        column.ArchivedBy = string.Join(" ", user.FirstName, user.LastName);
+        column.ArchivedBy = string.Join(" ", userDto.FirstName, userDto.LastName);
         
         await _columnRepository.UpdateAsync(column, ct);
     }

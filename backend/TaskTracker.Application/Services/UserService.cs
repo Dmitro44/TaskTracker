@@ -1,5 +1,6 @@
 using TaskTracker.Application.DTOs;
 using TaskTracker.Application.Interfaces;
+using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Auth;
 using TaskTracker.Domain.Interfaces.Repositories;
@@ -10,15 +11,15 @@ public class UserService : IUserService
 {
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUserRepository _userRepository;
-    private readonly IJwtProvider _jwtProvider;
+    private readonly IGenericMapper<UserDto, User> _userMapper;
 
     public UserService(IPasswordHasher passwordHasher,
         IUserRepository userRepository,
-        IJwtProvider jwtProvider)
+        IGenericMapper<UserDto, User> userMapper)
     {
         _passwordHasher = passwordHasher;
         _userRepository = userRepository;
-        _jwtProvider = jwtProvider;
+        _userMapper = userMapper;
     }
     
     public async Task Register(UserDto dto, string password, CancellationToken ct)
@@ -27,7 +28,7 @@ public class UserService : IUserService
 
         var user = new User
         {
-            Username = dto.UserName,
+            Username = dto.Username,
             FirstName = dto.FirstName,
             LastName = dto.LastName,
             Email = dto.Email,
@@ -37,12 +38,12 @@ public class UserService : IUserService
         await _userRepository.AddAsync(user, ct);
     }
 
-    public async Task<string> Login(string email, string password, CancellationToken ct)
+    public async Task<UserDto> ValidateCredentials(string email, string password, CancellationToken ct)
     {
         var user = await _userRepository.GetByEmailAsync(email, ct);
         if (user is null)
         {
-            throw new ArgumentNullException($"User with email {email} not found");
+            throw new ArgumentNullException($"User with email {email} not found. Invalid email");
         }
         
         var result = _passwordHasher.Verify(password, user.PasswordHash);
@@ -51,16 +52,14 @@ public class UserService : IUserService
             throw new ArgumentException("Invalid password");
         }
 
-        var token = _jwtProvider.GenerateToken(user);
-
-        return token;
+        return _userMapper.ToDto(user);
     }
 
-    public async Task<User> GetById(Guid userId, CancellationToken ct)
+    public async Task<UserDto> GetById(Guid userId, CancellationToken ct)
     {
         var user = await _userRepository.GetByIdAsync(userId, ct);
         if (user is null) throw new InvalidOperationException($"User with ID {userId} not found");
 
-        return user;
+        return _userMapper.ToDto(user);
     }
 }

@@ -1,5 +1,6 @@
 using Moq;
 using TaskTracker.Application.DTOs;
+using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Auth;
@@ -11,19 +12,19 @@ namespace TaskTracker.Tests.Application.Services
     {
         private readonly Mock<IPasswordHasher> _mockPasswordHasher;
         private readonly Mock<IUserRepository> _mockUserRepository;
-        private readonly Mock<IJwtProvider> _mockJwtProvider;
+        private readonly Mock<IGenericMapper<UserDto, User>> _mockUserMapper;
         private readonly UserService _userService;
 
         public UserServiceTests()
         {
             _mockPasswordHasher = new Mock<IPasswordHasher>();
             _mockUserRepository = new Mock<IUserRepository>();
-            _mockJwtProvider = new Mock<IJwtProvider>();
+            _mockUserMapper = new Mock<IGenericMapper<UserDto, User>>();
 
             _userService = new UserService(
                 _mockPasswordHasher.Object,
                 _mockUserRepository.Object,
-                _mockJwtProvider.Object);
+                _mockUserMapper.Object);
         }
 
         [Fact]
@@ -32,7 +33,7 @@ namespace TaskTracker.Tests.Application.Services
             // Arrange
             var userDto = new UserDto
             {
-                UserName = "testuser",
+                Username = "testuser",
                 FirstName = "Test",
                 LastName = "User",
                 Email = "test@example.com"
@@ -52,7 +53,7 @@ namespace TaskTracker.Tests.Application.Services
             
             _mockUserRepository.Verify(r => r.AddAsync(
                 It.Is<User>(u => 
-                    u.Username == userDto.UserName && 
+                    u.Username == userDto.Username && 
                     u.FirstName == userDto.FirstName && 
                     u.LastName == userDto.LastName && 
                     u.Email == userDto.Email && 
@@ -80,23 +81,34 @@ namespace TaskTracker.Tests.Application.Services
                 LastName = "User"
             };
 
+            var userDto = new UserDto
+            {
+                Id = Guid.NewGuid(),
+                Username = "testuser",
+                Email = email,
+                FirstName = "Test",
+                LastName = "User"
+            };
+
             _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(user);
 
             _mockPasswordHasher.Setup(h => h.Verify(password, hashedPassword))
                 .Returns(true);
 
-            _mockJwtProvider.Setup(j => j.GenerateToken(user))
-                .Returns(token);
+            // _mockJwtProvider.Setup(j => j.GenerateToken(user))
+            //     .Returns(token);
+
+            _mockUserMapper.Setup(m => m.ToDto(user)).Returns(userDto);
 
             // Act
-            var result = await _userService.Login(email, password, CancellationToken.None);
+            var result = await _userService.ValidateCredentials(email, password, CancellationToken.None);
 
             // Assert
-            Assert.Equal(token, result);
+            Assert.Equal(userDto, result);
             _mockUserRepository.Verify(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()), Times.Once);
             _mockPasswordHasher.Verify(h => h.Verify(password, hashedPassword), Times.Once);
-            _mockJwtProvider.Verify(j => j.GenerateToken(user), Times.Once);
+            // _mockJwtProvider.Verify(j => j.GenerateToken(user), Times.Once);
         }
 
         [Fact]
@@ -111,11 +123,10 @@ namespace TaskTracker.Tests.Application.Services
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentNullException>(
-                async () => await _userService.Login(email, password, CancellationToken.None));
+                async () => await _userService.ValidateCredentials(email, password, CancellationToken.None));
             
             _mockUserRepository.Verify(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()), Times.Once);
             _mockPasswordHasher.Verify(h => h.Verify(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-            _mockJwtProvider.Verify(j => j.GenerateToken(It.IsAny<User>()), Times.Never);
         }
 
         [Fact]
@@ -144,15 +155,14 @@ namespace TaskTracker.Tests.Application.Services
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(
-                async () => await _userService.Login(email, password, CancellationToken.None));
+                async () => await _userService.ValidateCredentials(email, password, CancellationToken.None));
             
             _mockUserRepository.Verify(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()), Times.Once);
             _mockPasswordHasher.Verify(h => h.Verify(password, hashedPassword), Times.Once);
-            _mockJwtProvider.Verify(j => j.GenerateToken(It.IsAny<User>()), Times.Never);
         }
         
         [Fact]
-        public async Task GetById_ShouldReturnUser_WhenUserExists()
+        public async Task GetById_ShouldReturnUserDto_WhenUserExists()
         {
             // Arrange
             var userId = Guid.NewGuid();
@@ -164,15 +174,27 @@ namespace TaskTracker.Tests.Application.Services
                 LastName = "Test",
                 Email = "dmitro@example.com"
             };
+
+            var userDto = new UserDto
+            {
+                Id = userId,
+                Username = "Dmitro44",
+                FirstName = "Dmitro",
+                LastName = "Test",
+                Email = "dmitro@example.com"
+            };
     
             _mockUserRepository.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(user);
+
+            _mockUserMapper.Setup(m => m.ToDto(user))
+                .Returns(userDto);
     
             // Act
             var result = await _userService.GetById(userId, CancellationToken.None);
     
             // Assert
-            Assert.Equal(user, result);
+            Assert.Equal(userDto, result);
             _mockUserRepository.Verify(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
         }
 

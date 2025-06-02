@@ -77,11 +77,11 @@ public class BoardService : IBoardService
         if (board is null) 
             throw new InvalidOperationException($"Board to archive with ID {boardId} not found");
         
-        var user = await _userService.GetById(userId, ct);
+        var userDto = await _userService.GetById(userId, ct);
         
         board.IsArchived = true;
         board.ArchivedAt = DateTime.UtcNow;
-        board.ArchivedBy = string.Join(" ", user.FirstName, user.LastName);
+        board.ArchivedBy = string.Join(" ", userDto.FirstName, userDto.LastName);
 
         await _boardRepository.UpdateAsync(board, ct);
     }

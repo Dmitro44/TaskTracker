@@ -1,4 +1,5 @@
 using Moq;
+using TaskTracker.Application.DTOs;
 using TaskTracker.Application.DTOs.Board;
 using TaskTracker.Application.DTOs.Card;
 using TaskTracker.Application.DTOs.Column;
@@ -203,7 +204,7 @@ public class BoardServiceTests
         var boardId = Guid.NewGuid();
         var userId = Guid.NewGuid();
         var board = new Board { Id = boardId, Title = "Test Board" };
-        var user = new User { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
+        var user = new UserDto { Id = userId, FirstName = "Ivan", LastName = "Petrov" };
         
         _mockBoardRepository.Setup(r => r.GetByIdAsync(boardId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(board);
