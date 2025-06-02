@@ -25,7 +25,8 @@ public class LabelController : ControllerBase
         {
             Name = request.Name,
             Color = request.Color,
-            BoardId = request.BoardId
+            BoardId = request.BoardId,
+            CardId = null
         };
         
         await _labelService.Create(labelDto, ct);
@@ -33,11 +34,19 @@ public class LabelController : ControllerBase
         return Ok();
     }
 
-    [HttpGet("getLabels")]
-    public async Task<IActionResult> GetLabels([FromQuery] Guid boardId, CancellationToken ct)
+    [HttpGet("{boardId:guid}/getLabels")]
+    public async Task<IActionResult> GetLabels(Guid boardId, CancellationToken ct)
     {
         var labels = await _labelService.GetLabels(boardId, ct);
 
         return Ok(labels.ToList());
+    }
+
+    [HttpGet("{cardId:guid}/getLabelsForCard")]
+    public async Task<IActionResult> GetLabelsForCard(Guid cardId, CancellationToken ct)
+    {
+        var labelsForCard = await _labelService.GetLabelsForCard(cardId, ct);
+
+        return Ok(labelsForCard.ToList());
     }
 }

@@ -40,4 +40,11 @@ public class LabelService : ILabelService
     {
         await _labelRepository.RemoveLabelFromCardAsync(cardId, labelId, ct);
     }
+
+    public async Task<IEnumerable<LabelDto>> GetLabelsForCard(Guid cardId, CancellationToken ct)
+    {
+        var labels = await _labelRepository.GetAllByCard(cardId, ct);
+        
+        return labels.Select(l => _labelMapper.ToDto(l));
+    }
 }

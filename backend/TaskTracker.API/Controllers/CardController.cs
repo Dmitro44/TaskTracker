@@ -54,8 +54,8 @@ public class CardController : ControllerBase
         return Ok(new MoveCardResponse(updatedCard.Position!.Value, updatedCard.ColumnId!.Value));
     }
 
-    [HttpGet("getCards")]
-    public async Task<IActionResult> GetCards([FromQuery] Guid boardId, CancellationToken ct)
+    [HttpGet("{boardId:guid}/getCards")]
+    public async Task<IActionResult> GetCards(Guid boardId, CancellationToken ct)
     {
         var cards = await _cardService.GetAllCards(boardId, ct);
 
@@ -63,9 +63,9 @@ public class CardController : ControllerBase
     }
 
     [HttpPost("{cardId:guid}/addLabel")]
-    public async Task<IActionResult> AddLabel(Guid cardId, [FromBody] AddLabelRequest request, CancellationToken ct)
+    public async Task<IActionResult> AddLabel(Guid cardId, [FromBody] Guid labelId, CancellationToken ct)
     {
-        await _cardService.AddLabelToCard(cardId, request.LabelId, ct);
+        await _cardService.AddLabelToCard(cardId, labelId, ct);
         return Ok();
     }
 

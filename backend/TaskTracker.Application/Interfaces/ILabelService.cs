@@ -8,4 +8,5 @@ public interface ILabelService
     Task<IEnumerable<LabelDto>> GetLabels(Guid boardId, CancellationToken ct);
     Task AttachLabelToCard(Guid cardId, Guid labelId, CancellationToken ct);
     Task RemoveLabelFromCard(Guid cardId, Guid labelId, CancellationToken ct);
+    Task<IEnumerable<LabelDto>> GetLabelsForCard(Guid cardId, CancellationToken ct);
 }

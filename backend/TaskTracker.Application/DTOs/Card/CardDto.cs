@@ -6,4 +6,6 @@ public class CardDto
     public string? Title { get; set; }
     public int? Position { get; set; }
     public Guid? ColumnId { get; set; }
+
+    public List<LabelDto> Labels { get; set; } = new();
 }

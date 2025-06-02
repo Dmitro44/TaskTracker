@@ -44,6 +44,8 @@ public class CardRepository : ICardRepository
     {
         return await _dbContext.Cards
             .AsNoTracking()
+            .Include(c => c.CardLabels)
+            .ThenInclude(cl => cl.Label)
             .ToListAsync(ct);
     }
 
@@ -51,6 +53,8 @@ public class CardRepository : ICardRepository
     {
         return await _dbContext.Cards
             .Where(c => columnIds.Contains(c.ColumnId))
+            .Include(c => c.CardLabels)
+            .ThenInclude(cl => cl.Label)
             .ToListAsync(ct);
     }
 }

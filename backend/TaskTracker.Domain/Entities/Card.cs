@@ -19,7 +19,6 @@ public class Card : IAuditableEntity
     public DateTime ModifiedDate { get; set; }
     public string? ModifiedBy { get; set; }
 
+    public List<CardLabel> CardLabels { get; set; } = new();
     public List<CheckList> CheckLists { get; set; } = new();
-    public List<Comment> Comments { get; set; } = new();
-    public List<Attachment> Attachments { get; set; } = new();
 }

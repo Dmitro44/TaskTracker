@@ -9,4 +9,5 @@ public interface ILabelRepository
     Task<IEnumerable<Label>> GetAllByBoardAsync(Guid boardId, CancellationToken ct);
     Task AttachLabelToCardAsync(Guid cardId, Guid labelId, CancellationToken ct);
     Task RemoveLabelFromCardAsync(Guid cardId, Guid labelId, CancellationToken ct);
+    Task<IEnumerable<Label>> GetAllByCard(Guid cardId, CancellationToken ct);
 }

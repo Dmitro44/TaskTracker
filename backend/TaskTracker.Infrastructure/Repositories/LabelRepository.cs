@@ -63,4 +63,13 @@ public class LabelRepository : ILabelRepository
             await _dbContext.SaveChangesAsync(ct);
         }
     }
+
+    public async Task<IEnumerable<Label>> GetAllByCard(Guid cardId, CancellationToken ct)
+    {
+        return await _dbContext.CardLabels
+            .AsNoTracking()
+            .Where(cl => cl.CardId == cardId)
+            .Select(cl => cl.Label)
+            .ToListAsync(ct);
+    }
 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TaskTracker.Infrastructure;
@@ -11,9 +12,11 @@ using TaskTracker.Infrastructure;
 namespace TaskTracker.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250528135402_AddCardForeignKeyToLabel")]
+    partial class AddCardForeignKeyToLabel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -171,13 +174,19 @@ namespace TaskTracker.Infrastructure.Migrations
 
             modelBuilder.Entity("TaskTracker.Domain.Entities.CardLabel", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("CardId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("LabelId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("CardId", "LabelId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("CardId");
 
                     b.HasIndex("LabelId");
 
@@ -311,6 +320,9 @@ namespace TaskTracker.Infrastructure.Migrations
                     b.Property<Guid>("BoardId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CardId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Color")
                         .IsRequired()
                         .HasColumnType("text");
@@ -322,6 +334,8 @@ namespace TaskTracker.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BoardId");
+
+                    b.HasIndex("CardId");
 
                     b.ToTable("Labels");
                 });
@@ -372,7 +386,7 @@ namespace TaskTracker.Infrastructure.Migrations
             modelBuilder.Entity("TaskTracker.Domain.Entities.Attachment", b =>
                 {
                     b.HasOne("TaskTracker.Domain.Entities.Card", "Card")
-                        .WithMany()
+                        .WithMany("Attachments")
                         .HasForeignKey("CardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -432,13 +446,13 @@ namespace TaskTracker.Infrastructure.Migrations
             modelBuilder.Entity("TaskTracker.Domain.Entities.CardLabel", b =>
                 {
                     b.HasOne("TaskTracker.Domain.Entities.Card", "Card")
-                        .WithMany("CardLabels")
+                        .WithMany()
                         .HasForeignKey("CardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("TaskTracker.Domain.Entities.Label", "Label")
-                        .WithMany("CardLabels")
+                        .WithMany()
                         .HasForeignKey("LabelId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -484,7 +498,7 @@ namespace TaskTracker.Infrastructure.Migrations
             modelBuilder.Entity("TaskTracker.Domain.Entities.Comment", b =>
                 {
                     b.HasOne("TaskTracker.Domain.Entities.Card", "Card")
-                        .WithMany()
+                        .WithMany("Comments")
                         .HasForeignKey("CardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -508,7 +522,15 @@ namespace TaskTracker.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TaskTracker.Domain.Entities.Card", "Card")
+                        .WithMany("Labels")
+                        .HasForeignKey("CardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Board");
+
+                    b.Navigation("Card");
                 });
 
             modelBuilder.Entity("TaskTracker.Domain.Entities.Board", b =>
@@ -518,9 +540,13 @@ namespace TaskTracker.Infrastructure.Migrations
 
             modelBuilder.Entity("TaskTracker.Domain.Entities.Card", b =>
                 {
-                    b.Navigation("CardLabels");
+                    b.Navigation("Attachments");
 
                     b.Navigation("CheckLists");
+
+                    b.Navigation("Comments");
+
+                    b.Navigation("Labels");
                 });
 
             modelBuilder.Entity("TaskTracker.Domain.Entities.CheckList", b =>
@@ -531,11 +557,6 @@ namespace TaskTracker.Infrastructure.Migrations
             modelBuilder.Entity("TaskTracker.Domain.Entities.Column", b =>
                 {
                     b.Navigation("Cards");
-                });
-
-            modelBuilder.Entity("TaskTracker.Domain.Entities.Label", b =>
-                {
-                    b.Navigation("CardLabels");
                 });
 #pragma warning restore 612, 618
         }

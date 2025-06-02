@@ -99,11 +99,11 @@ public class CardService : ICardService
         if (card is null)
             throw new InvalidOperationException($"Card to archive with ID {cardId} not found");
         
-        var user = await _userService.GetById(userId, ct);
+        var userDto = await _userService.GetById(userId, ct);
         
         card.IsArchived = true;
         card.ArchivedAt = DateTime.UtcNow;
-        card.ArchivedBy = string.Join(" ", user.FirstName, user.LastName);
+        card.ArchivedBy = string.Join(" ", userDto.FirstName, userDto.LastName);
         
         await _cardRepository.UpdateAsync(card, ct);
     }

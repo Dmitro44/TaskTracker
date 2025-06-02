@@ -13,7 +13,7 @@ public class LabelMapper : IGenericMapper<LabelDto, Label>
             Id = source.Id,
             Name = source.Name,
             Color = source.Color,
-            BoardId = source.BoardId
+            BoardId = source.BoardId,
         };
     }
 
@@ -24,7 +24,7 @@ public class LabelMapper : IGenericMapper<LabelDto, Label>
             Id = source.Id,
             Name = source.Name,
             Color = source.Color,
-            BoardId = source.BoardId
+            BoardId = source.BoardId,
         };
     }
 

@@ -9,6 +9,13 @@ namespace TaskTracker.Application.Mappers;
 
 public class CardMapper : IGenericMapper<CardDto, Card>
 {
+    private readonly IGenericMapper<LabelDto, Label> _labelMapper;
+
+    public CardMapper(IGenericMapper<LabelDto, Label> labelMapper)
+    {
+        _labelMapper = labelMapper;
+    }
+
     public Card ToEntity(CardDto source)
     {
         return new Card
@@ -16,7 +23,7 @@ public class CardMapper : IGenericMapper<CardDto, Card>
             Id = source.Id,
             Title = source.Title ?? "",
             Position = source.Position!.Value,
-            ColumnId = source.ColumnId!.Value
+            ColumnId = source.ColumnId!.Value,
         };
     }
 
@@ -27,7 +34,10 @@ public class CardMapper : IGenericMapper<CardDto, Card>
             Id = source.Id,
             Title = source.Title,
             Position = source.Position,
-            ColumnId = source.ColumnId
+            ColumnId = source.ColumnId,
+            Labels = source.CardLabels
+                .Select(cl => _labelMapper.ToDto(cl.Label))
+                .ToList(),
         };
     }
 
