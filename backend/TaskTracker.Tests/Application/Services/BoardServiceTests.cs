@@ -4,7 +4,6 @@ using TaskTracker.Application.DTOs.Board;
 using TaskTracker.Application.DTOs.Card;
 using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
@@ -13,7 +12,6 @@ namespace TaskTracker.Tests.Application.Services;
 
 public class BoardServiceTests
 {
-    private readonly Mock<IGenericMapper<BoardShortDto, Board>> _mockBoardMapper;
     private readonly Mock<IBoardRepository> _mockBoardRepository;
     private readonly Mock<IColumnService> _mockColumnService;
     private readonly Mock<ICardService> _mockCardService;
@@ -23,14 +21,12 @@ public class BoardServiceTests
     public BoardServiceTests()
     {
         _mockBoardRepository = new Mock<IBoardRepository>();
-        _mockBoardMapper = new Mock<IGenericMapper<BoardShortDto, Board>>();
         _mockColumnService = new Mock<IColumnService>();
         _mockCardService = new Mock<ICardService>();
         _mockUserService = new Mock<IUserService>();
         
         _boardService = new BoardService(
             _mockBoardRepository.Object,
-            _mockBoardMapper.Object,
             _mockColumnService.Object,
             _mockCardService.Object,
             _mockUserService.Object);
@@ -54,16 +50,10 @@ public class BoardServiceTests
             IsPublic = boardDto.IsPublic
         };
         
-        _mockBoardMapper
-            .Setup(mapper => mapper.ToEntity(boardDto))
-            .Returns(boardEntity);
-        
         // Act
         await _boardService.Create(boardDto, CancellationToken.None);
         
         // Assert
-        _mockBoardMapper.Verify(mapper => mapper.ToEntity(boardDto), Times.Once);
-        
         _mockBoardRepository.Verify(repo => repo.AddAsync(boardEntity, CancellationToken.None), Times.Once);
     }
 
@@ -88,13 +78,6 @@ public class BoardServiceTests
         _mockBoardRepository
             .Setup(repo => repo.GetAllByUserAsync(userId, CancellationToken.None))
             .ReturnsAsync(userBoards);
-
-        for (int i = 0; i < userBoards.Count; ++i)
-        {
-            _mockBoardMapper
-                .Setup(mapper => mapper.ToDto(userBoards[i]))
-                .Returns(expectedDtos[i]);
-        }
         
         // Act
         var result = await _boardService.GetBoards(userId, CancellationToken.None);

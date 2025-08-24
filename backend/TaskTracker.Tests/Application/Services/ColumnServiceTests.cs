@@ -2,7 +2,6 @@ using Moq;
 using TaskTracker.Application.DTOs;
 using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
@@ -11,7 +10,6 @@ namespace TaskTracker.Tests.Application.Services;
 
 public class ColumnServiceTests
 {
-    private readonly Mock<IGenericMapper<ColumnShortDto, Column>> _mockColumnMapper;
     private readonly Mock<IColumnRepository> _mockColumnRepository;
     private readonly Mock<IUserService> _mockUserService;
     private readonly ColumnService _columnService;
@@ -19,12 +17,10 @@ public class ColumnServiceTests
     public ColumnServiceTests()
     {
         _mockColumnRepository = new Mock<IColumnRepository>();
-        _mockColumnMapper = new Mock<IGenericMapper<ColumnShortDto, Column>>();
         _mockUserService = new Mock<IUserService>();
         
         
         _columnService = new ColumnService(
-            _mockColumnMapper.Object,
             _mockColumnRepository.Object,
             _mockUserService.Object);
     }
@@ -35,14 +31,11 @@ public class ColumnServiceTests
         // Arrange
         var dto = new ColumnShortDto { Id = Guid.NewGuid(), Title = "Col", BoardId = Guid.NewGuid(), Position = 1 };
         var entity = new Column { Id = dto.Id, Title = dto.Title, BoardId = dto.BoardId.Value, Position = dto.Position!.Value };
-
-        _mockColumnMapper.Setup(m => m.ToEntity(dto)).Returns(entity);
-
+        
         // Act
         var result = await _columnService.Create(dto, CancellationToken.None);
 
         // Assert
-        _mockColumnMapper.Verify(m => m.ToEntity(dto), Times.Once);
         _mockColumnRepository.Verify(r => r.AddAsync(entity, CancellationToken.None), Times.Once);
         Assert.Equal(entity, result);
     }
@@ -60,8 +53,6 @@ public class ColumnServiceTests
         var dtos = columns.Select(c => new ColumnShortDto { Id = c.Id, BoardId = boardId, Title = c.Title, Position = c.Position }).ToList();
 
         _mockColumnRepository.Setup(r => r.GetAllByBoardAsync(boardId, It.IsAny<CancellationToken>())).ReturnsAsync(columns);
-        for (int i = 0; i < columns.Count; ++i)
-            _mockColumnMapper.Setup(m => m.ToDto(columns[i])).Returns(dtos[i]);
 
         // Act
         var result = (await _columnService.GetColumns(boardId, CancellationToken.None)).ToList();
@@ -117,15 +108,6 @@ public class ColumnServiceTests
         _mockColumnRepository.Setup(r => r.GetByIdAsync(column1.Id, It.IsAny<CancellationToken>())).ReturnsAsync(column1);
         _mockColumnRepository.Setup(r => r.GetAllByBoardAsync(boardId, It.IsAny<CancellationToken>())).ReturnsAsync(columns);
 
-        _mockColumnMapper.Setup(m => m.MapPartial(moveDto, column1));
-        _mockColumnMapper.Setup(m => m.ToDto(column1)).Returns(new ColumnShortDto
-        {
-            Id = column1.Id,
-            BoardId = boardId,
-            Title = column1.Title,
-            Position = moveDto.Position
-        });
-
         // Act
         var result = await _columnService.MoveColumns(moveDto, CancellationToken.None);
 
@@ -136,7 +118,6 @@ public class ColumnServiceTests
         // The main column should be updated last
         _mockColumnRepository.Verify(r => r.UpdateAsync(column1, It.IsAny<CancellationToken>()), Times.Once);
 
-        _mockColumnMapper.Verify(m => m.MapPartial(moveDto, column1), Times.Once);
         Assert.Equal(column1.Id, result.Id);
         Assert.Equal(moveDto.Position, result.Position);
     }
@@ -150,7 +131,6 @@ public class ColumnServiceTests
 
         _mockColumnRepository.Setup(r => r.GetByIdAsync(dto.Id, It.IsAny<CancellationToken>())).ReturnsAsync(column);
         _mockColumnRepository.Setup(r => r.GetAllByBoardAsync(column.BoardId, It.IsAny<CancellationToken>())).ReturnsAsync(new List<Column> { column });
-        _mockColumnMapper.Setup(m => m.ToDto(column)).Returns(dto);
 
         // Act
         var result = await _columnService.MoveColumns(dto, CancellationToken.None);
@@ -174,7 +154,6 @@ public class ColumnServiceTests
         await _columnService.UpdateColumn(dto, CancellationToken.None);
 
         // Assert
-        _mockColumnMapper.Verify(m => m.MapPartial(dto, column), Times.Once);
         _mockColumnRepository.Verify(r => r.UpdateAsync(column, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -207,18 +186,6 @@ public class ColumnServiceTests
         _mockColumnRepository.Setup(r => r.GetByIdAsync(col3.Id, It.IsAny<CancellationToken>())).ReturnsAsync(col3);
         _mockColumnRepository.Setup(r => r.GetAllByBoardAsync(boardId, It.IsAny<CancellationToken>())).ReturnsAsync(columns);
 
-        _mockColumnMapper.Setup(m => m.MapPartial(moveDto, col3))
-            .Callback(() => {
-                col3.Position = moveDto.Position.Value;
-            });
-        _mockColumnMapper.Setup(m => m.ToDto(col3)).Returns(new ColumnShortDto
-        {
-            Id = col3.Id,
-            BoardId = boardId,
-            Title = col3.Title,
-            Position = moveDto.Position
-        });
-
         // Act
         var result = await _columnService.MoveColumns(moveDto, CancellationToken.None);
 
@@ -231,7 +198,6 @@ public class ColumnServiceTests
         _mockColumnRepository.Verify(r => r.UpdateAsync(col1, It.IsAny<CancellationToken>()), Times.Once);
         _mockColumnRepository.Verify(r => r.UpdateAsync(col2, It.IsAny<CancellationToken>()), Times.Once);
         _mockColumnRepository.Verify(r => r.UpdateAsync(col3, It.IsAny<CancellationToken>()), Times.Once);
-        _mockColumnMapper.Verify(m => m.MapPartial(moveDto, col3), Times.Once);
         Assert.Equal(col3.Id, result.Id);
         Assert.Equal(moveDto.Position, result.Position);
     }

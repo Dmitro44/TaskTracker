@@ -1,7 +1,6 @@
 using Moq;
 using TaskTracker.Application.DTOs.CheckList;
 using TaskTracker.Application.DTOs.CheckListItem;
-using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
@@ -11,20 +10,14 @@ namespace TaskTracker.Tests.Application.Services
     public class CheckListServiceTests
     {
         private readonly Mock<ICheckListRepository> _mockCheckListRepository;
-        private readonly Mock<IGenericMapper<CheckListDto, CheckList>> _mockCheckListMapper;
-        private readonly Mock<IGenericMapper<CheckListItemDto, CheckListItem>> _mockCheckListItemMapper;
         private readonly CheckListService _checkListService;
 
         public CheckListServiceTests()
         {
             _mockCheckListRepository = new Mock<ICheckListRepository>();
-            _mockCheckListMapper = new Mock<IGenericMapper<CheckListDto, CheckList>>();
-            _mockCheckListItemMapper = new Mock<IGenericMapper<CheckListItemDto, CheckListItem>>();
 
             _checkListService = new CheckListService(
-                _mockCheckListRepository.Object,
-                _mockCheckListMapper.Object,
-                _mockCheckListItemMapper.Object);
+                _mockCheckListRepository.Object);
         }
 
         [Fact]
@@ -45,14 +38,10 @@ namespace TaskTracker.Tests.Application.Services
                 CardId = checkListDto.CardId.Value 
             };
 
-            _mockCheckListMapper.Setup(m => m.ToEntity(checkListDto))
-                .Returns(checkList);
-
             // Act
             await _checkListService.CreateCheckList(checkListDto, CancellationToken.None);
 
             // Assert
-            _mockCheckListMapper.Verify(m => m.ToEntity(checkListDto), Times.Once);
             _mockCheckListRepository.Verify(r => r.AddAsync(checkList, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -76,14 +65,10 @@ namespace TaskTracker.Tests.Application.Services
                 IsCompleted = false
             };
 
-            _mockCheckListItemMapper.Setup(m => m.ToEntity(checkListItemDto))
-                .Returns(checkListItem);
-
             // Act
             await _checkListService.CreateCheckListItem(checkListItemDto, CancellationToken.None);
 
             // Assert
-            _mockCheckListItemMapper.Verify(m => m.ToEntity(checkListItemDto), Times.Once);
             _mockCheckListRepository.Verify(r => r.AddItemAsync(checkListItem, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -111,16 +96,6 @@ namespace TaskTracker.Tests.Application.Services
             _mockCheckListRepository.Setup(r => r.GetItemByIdAsync(itemId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingItem);
 
-            _mockCheckListItemMapper.Setup(m => m.MapPartial(checkListItemDto, existingItem))
-                .Callback(() => 
-                {
-                    existingItem.Text = checkListItemDto.Text;
-                    existingItem.IsCompleted = checkListItemDto.IsCompleted.Value;
-                });
-
-            _mockCheckListItemMapper.Setup(m => m.ToDto(existingItem))
-                .Returns(checkListItemDto);
-
             // Act
             var result = await _checkListService.UpdateCheckListItem(itemId, checkListItemDto, CancellationToken.None);
 
@@ -130,9 +105,7 @@ namespace TaskTracker.Tests.Application.Services
             Assert.True(existingItem.IsCompleted);
             
             _mockCheckListRepository.Verify(r => r.GetItemByIdAsync(itemId, It.IsAny<CancellationToken>()), Times.Once);
-            _mockCheckListItemMapper.Verify(m => m.MapPartial(checkListItemDto, existingItem), Times.Once);
             _mockCheckListRepository.Verify(r => r.UpdateCheckListItemAsync(existingItem, It.IsAny<CancellationToken>()), Times.Once);
-            _mockCheckListItemMapper.Verify(m => m.ToDto(existingItem), Times.Once);
         }
 
         [Fact]
@@ -154,7 +127,6 @@ namespace TaskTracker.Tests.Application.Services
                 async () => await _checkListService.UpdateCheckListItem(itemId, checkListItemDto, CancellationToken.None));
 
             _mockCheckListRepository.Verify(r => r.GetItemByIdAsync(itemId, It.IsAny<CancellationToken>()), Times.Once);
-            _mockCheckListItemMapper.Verify(m => m.MapPartial(It.IsAny<CheckListItemDto>(), It.IsAny<CheckListItem>()), Times.Never);
             _mockCheckListRepository.Verify(r => r.UpdateCheckListItemAsync(It.IsAny<CheckListItem>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }

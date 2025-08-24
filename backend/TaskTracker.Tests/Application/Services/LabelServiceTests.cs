@@ -1,6 +1,5 @@
 using Moq;
 using TaskTracker.Application.DTOs;
-using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
@@ -10,17 +9,14 @@ namespace TaskTracker.Tests.Application.Services
     public class LabelServiceTests
     {
         private readonly Mock<ILabelRepository> _mockLabelRepository;
-        private readonly Mock<IGenericMapper<LabelDto, Label>> _mockLabelMapper;
         private readonly LabelService _labelService;
 
         public LabelServiceTests()
         {
             _mockLabelRepository = new Mock<ILabelRepository>();
-            _mockLabelMapper = new Mock<IGenericMapper<LabelDto, Label>>();
 
             _labelService = new LabelService(
-                _mockLabelRepository.Object,
-                _mockLabelMapper.Object);
+                _mockLabelRepository.Object);
         }
 
         [Fact]
@@ -43,14 +39,10 @@ namespace TaskTracker.Tests.Application.Services
                 BoardId = labelDto.BoardId
             };
 
-            _mockLabelMapper.Setup(m => m.ToEntity(labelDto))
-                .Returns(label);
-
             // Act
             await _labelService.Create(labelDto, CancellationToken.None);
 
             // Assert
-            _mockLabelMapper.Verify(m => m.ToEntity(labelDto), Times.Once);
             _mockLabelRepository.Verify(r => r.AddAsync(label, It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -75,14 +67,6 @@ namespace TaskTracker.Tests.Application.Services
 
             _mockLabelRepository.Setup(r => r.GetAllByBoardAsync(boardId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(labels);
-
-            for (int i = 0; i < labels.Count; i++)
-            {
-                var label = labels[i];
-                var labelDto = labelDtos[i];
-                _mockLabelMapper.Setup(m => m.ToDto(label))
-                    .Returns(labelDto);
-            }
 
             // Act
             var result = await _labelService.GetLabels(boardId, CancellationToken.None);

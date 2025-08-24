@@ -1,6 +1,6 @@
 using TaskTracker.Application.DTOs;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
+using TaskTracker.Application.Mappers;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Auth;
 using TaskTracker.Domain.Interfaces.Repositories;
@@ -11,15 +11,12 @@ public class UserService : IUserService
 {
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUserRepository _userRepository;
-    private readonly IGenericMapper<UserDto, User> _userMapper;
 
     public UserService(IPasswordHasher passwordHasher,
-        IUserRepository userRepository,
-        IGenericMapper<UserDto, User> userMapper)
+        IUserRepository userRepository)
     {
         _passwordHasher = passwordHasher;
         _userRepository = userRepository;
-        _userMapper = userMapper;
     }
     
     public async Task Register(UserDto dto, string password, CancellationToken ct)
@@ -52,7 +49,7 @@ public class UserService : IUserService
             throw new ArgumentException("Invalid password");
         }
 
-        return _userMapper.ToDto(user);
+        return user.ToDto();
     }
 
     public async Task<UserDto> GetById(Guid userId, CancellationToken ct)
@@ -60,6 +57,6 @@ public class UserService : IUserService
         var user = await _userRepository.GetByIdAsync(userId, ct);
         if (user is null) throw new InvalidOperationException($"User with ID {userId} not found");
 
-        return _userMapper.ToDto(user);
+        return user.ToDto();
     }
 }

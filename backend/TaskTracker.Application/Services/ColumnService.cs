@@ -1,7 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
 using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
+using TaskTracker.Application.Mappers;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
 
@@ -9,23 +8,20 @@ namespace TaskTracker.Application.Services;
 
 public class ColumnService : IColumnService
 {
-    private readonly IGenericMapper<ColumnShortDto, Column> _columnMapper;
     private readonly IColumnRepository _columnRepository;
     private readonly IUserService _userService;
 
     public ColumnService(
-        IGenericMapper<ColumnShortDto, Column> columnMapper,
         IColumnRepository columnRepository,
         IUserService userService)
     {
-        _columnMapper = columnMapper;
         _columnRepository = columnRepository;
         _userService = userService;
     }
     
     public async Task<Column> Create(ColumnShortDto shortDto, CancellationToken ct)
     {
-        var column = _columnMapper.ToEntity(shortDto);
+        var column = shortDto.ToEntity();
         
         await _columnRepository.AddAsync(column, ct);
 
@@ -36,7 +32,7 @@ public class ColumnService : IColumnService
     {
         var columns = await _columnRepository.GetAllByBoardAsync(boardId, ct);
         
-        return columns.Select(c => _columnMapper.ToDto(c));
+        return columns.Select(c => c.ToDto());
     }
 
     public async Task<ColumnShortDto> MoveColumns(ColumnShortDto columnDto, CancellationToken ct)
@@ -53,7 +49,7 @@ public class ColumnService : IColumnService
         var newPosition = columnDto.Position;
 
         if (oldPosition == newPosition)
-            return _columnMapper.ToDto(column);
+            return column.ToDto();
 
         foreach (var col in boardColumns)
         {
@@ -73,11 +69,11 @@ public class ColumnService : IColumnService
             await _columnRepository.UpdateAsync(col, ct);
         }
         
-        _columnMapper.MapPartial(columnDto, column);
+        column.UpdateFromDto(columnDto);
         
         await _columnRepository.UpdateAsync(column, ct);
         
-        return _columnMapper.ToDto(column);
+        return column.ToDto();
     }
 
     public async Task UpdateColumn(ColumnShortDto updateColumnDto, CancellationToken ct)
@@ -88,7 +84,7 @@ public class ColumnService : IColumnService
             throw new InvalidOperationException($"Column with ID {updateColumnDto.Id} not found");
         }
         
-        _columnMapper.MapPartial(updateColumnDto, columnToUpdate);
+        columnToUpdate.UpdateFromDto(updateColumnDto);
         
         await _columnRepository.UpdateAsync(columnToUpdate, ct);
     }

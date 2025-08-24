@@ -2,29 +2,26 @@ using TaskTracker.Application.DTOs.Card;
 using TaskTracker.Application.DTOs.CheckList;
 using TaskTracker.Application.DTOs.CheckListItem;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
+using TaskTracker.Application.Mappers;
+using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
-using Card = TaskTracker.Domain.Entities.Card;
 
 namespace TaskTracker.Application.Services;
 
 public class CardService : ICardService
 {
     private readonly ICardRepository _cardRepository;
-    private readonly IGenericMapper<CardDto, Card> _cardMapper;
     private readonly ILabelService _labelService;
     private readonly ICheckListService _checkListService;
     private readonly IUserService _userService;
 
     public CardService(
         ICardRepository cardRepository,
-        IGenericMapper<CardDto, Card> cardMapper,
         ILabelService labelService,
         ICheckListService checkListService,
         IUserService userService)
     {
         _cardRepository = cardRepository;
-        _cardMapper = cardMapper;
         _labelService = labelService;
         _checkListService = checkListService;
         _userService = userService;
@@ -32,7 +29,7 @@ public class CardService : ICardService
     
     public async Task<Card> CreateCard(CardDto dto, CancellationToken ct)
     {
-        var card = _cardMapper.ToEntity(dto);
+        var card = dto.ToEntity();
         
         await _cardRepository.AddAsync(card, ct);
 
@@ -43,7 +40,7 @@ public class CardService : ICardService
     {
         var cards = await _cardRepository.GetAllAsync(ct);
         
-        return cards.Select(c => _cardMapper.ToDto(c));
+        return cards.Select(c => c.ToDto());
     }
 
     public async Task<CardDto> MoveCards(CardDto dto, CancellationToken ct)
@@ -73,12 +70,12 @@ public class CardService : ICardService
             
             await _cardRepository.UpdateAsync(c, ct);
         }
-        
-        _cardMapper.MapPartial(dto, card);
+
+        card.UpdateFromDto(dto);
 
         await _cardRepository.UpdateAsync(card, ct);
 
-        return _cardMapper.ToDto(card);
+        return card.ToDto();
     }
 
     public async Task<CardDto> UpdateCard(CardDto dto, CancellationToken ct)
@@ -86,11 +83,11 @@ public class CardService : ICardService
         var card = await _cardRepository.GetByIdAsync(dto.Id, ct);
         if (card is null) throw new InvalidOperationException($"Card with ID {dto.Id} not found");
 
-        _cardMapper.MapPartial(dto, card);
+        card.UpdateFromDto(dto);
         
         await _cardRepository.UpdateAsync(card, ct);
         
-        return _cardMapper.ToDto(card);
+        return card.ToDto();
     }
 
     public async Task ArchiveCard(Guid cardId, Guid userId, CancellationToken ct)
@@ -153,6 +150,6 @@ public class CardService : ICardService
         
         return cards
             .GroupBy(c => c.ColumnId)
-            .ToDictionary(g => g.Key, g => g.Select(card => _cardMapper.ToDto(card)));
+            .ToDictionary(g => g.Key, g => g.Select(card => card.ToDto()));
     }
 }

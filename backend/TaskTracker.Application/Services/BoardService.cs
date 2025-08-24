@@ -2,8 +2,7 @@ using TaskTracker.Application.DTOs.Board;
 using TaskTracker.Application.DTOs.Card;
 using TaskTracker.Application.DTOs.Column;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
-using TaskTracker.Domain.Entities;
+using TaskTracker.Application.Mappers;
 using TaskTracker.Domain.Interfaces.Repositories;
 
 namespace TaskTracker.Application.Services;
@@ -11,20 +10,17 @@ namespace TaskTracker.Application.Services;
 public class BoardService : IBoardService
 {
     private readonly IBoardRepository _boardRepository;
-    private readonly IGenericMapper<BoardShortDto, Board> _boardMapper;
     private readonly IColumnService _columnService;
     private readonly ICardService _cardService;
     private readonly IUserService _userService;
 
     public BoardService(
         IBoardRepository boardRepository,
-        IGenericMapper<BoardShortDto, Board> boardMapper,
         IColumnService columnService,
         ICardService cardService,
         IUserService userService)
     {
         _boardRepository = boardRepository;
-        _boardMapper = boardMapper;
         _columnService = columnService;
         _cardService = cardService;
         _userService = userService;
@@ -32,7 +28,7 @@ public class BoardService : IBoardService
     
     public async Task Create(BoardShortDto shortDto, CancellationToken ct)
     {
-        var board = _boardMapper.ToEntity(shortDto);
+        var board = shortDto.ToEntity();
 
         await _boardRepository.AddAsync(board, ct);
     }
@@ -41,7 +37,7 @@ public class BoardService : IBoardService
     {
         var boards = await _boardRepository.GetAllByUserAsync(userId, ct);
         
-        return boards.Select(board => _boardMapper.ToDto(board));
+        return boards.Select(board => board.ToDto());
     }
 
     public async Task<BoardFullDto> GetBoardWithColumnsAndCards(Guid boardId, CancellationToken ct)

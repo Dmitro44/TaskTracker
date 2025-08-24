@@ -1,6 +1,5 @@
 using Moq;
 using TaskTracker.Application.DTOs;
-using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Auth;
@@ -12,19 +11,16 @@ namespace TaskTracker.Tests.Application.Services
     {
         private readonly Mock<IPasswordHasher> _mockPasswordHasher;
         private readonly Mock<IUserRepository> _mockUserRepository;
-        private readonly Mock<IGenericMapper<UserDto, User>> _mockUserMapper;
         private readonly UserService _userService;
 
         public UserServiceTests()
         {
             _mockPasswordHasher = new Mock<IPasswordHasher>();
             _mockUserRepository = new Mock<IUserRepository>();
-            _mockUserMapper = new Mock<IGenericMapper<UserDto, User>>();
 
             _userService = new UserService(
                 _mockPasswordHasher.Object,
-                _mockUserRepository.Object,
-                _mockUserMapper.Object);
+                _mockUserRepository.Object);
         }
 
         [Fact]
@@ -95,12 +91,7 @@ namespace TaskTracker.Tests.Application.Services
 
             _mockPasswordHasher.Setup(h => h.Verify(password, hashedPassword))
                 .Returns(true);
-
-            // _mockJwtProvider.Setup(j => j.GenerateToken(user))
-            //     .Returns(token);
-
-            _mockUserMapper.Setup(m => m.ToDto(user)).Returns(userDto);
-
+            
             // Act
             var result = await _userService.ValidateCredentials(email, password, CancellationToken.None);
 
@@ -186,9 +177,6 @@ namespace TaskTracker.Tests.Application.Services
     
             _mockUserRepository.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(user);
-
-            _mockUserMapper.Setup(m => m.ToDto(user))
-                .Returns(userDto);
     
             // Act
             var result = await _userService.GetById(userId, CancellationToken.None);

@@ -4,7 +4,6 @@ using TaskTracker.Application.DTOs.Card;
 using TaskTracker.Application.DTOs.CheckList;
 using TaskTracker.Application.DTOs.CheckListItem;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
 using TaskTracker.Application.Services;
 using TaskTracker.Domain.Entities;
 using TaskTracker.Domain.Interfaces.Repositories;
@@ -14,7 +13,6 @@ namespace TaskTracker.Tests.Application.Services
     public class CardServiceTests
     {
         private readonly Mock<ICardRepository> _mockCardRepository;
-        private readonly Mock<IGenericMapper<CardDto, Card>> _mockCardMapper;
         private readonly Mock<ILabelService> _mockLabelService;
         private readonly Mock<ICheckListService> _mockCheckListService;
         private readonly Mock<IUserService> _mockUserService;
@@ -23,14 +21,12 @@ namespace TaskTracker.Tests.Application.Services
         public CardServiceTests()
         {
             _mockCardRepository = new Mock<ICardRepository>();
-            _mockCardMapper = new Mock<IGenericMapper<CardDto, Card>>();
             _mockLabelService = new Mock<ILabelService>();
             _mockCheckListService = new Mock<ICheckListService>();
             _mockUserService = new Mock<IUserService>();
 
             _cardService = new CardService(
                 _mockCardRepository.Object,
-                _mockCardMapper.Object,
                 _mockLabelService.Object,
                 _mockCheckListService.Object,
                 _mockUserService.Object);
@@ -42,9 +38,6 @@ namespace TaskTracker.Tests.Application.Services
             // Arrange
             var cardDto = new CardDto { Id = Guid.NewGuid(), Title = "Test Card" };
             var card = new Card { Id = cardDto.Id, Title = cardDto.Title };
-
-            _mockCardMapper.Setup(m => m.ToEntity(cardDto))
-                .Returns(card);
 
             // Act
             var result = await _cardService.CreateCard(cardDto, CancellationToken.None);
@@ -69,14 +62,6 @@ namespace TaskTracker.Tests.Application.Services
             _mockCardRepository.Setup(r => r.GetAllAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(cards);
 
-            for (int i = 0; i < cards.Count; i++)
-            {
-                var card = cards[i];
-                var cardDto = cardDtos[i];
-                _mockCardMapper.Setup(m => m.ToDto(card))
-                    .Returns(cardDto);
-            }
-
             // Act
             var result = (await _cardService.GetAllCards(boardId, CancellationToken.None)).ToList();
 
@@ -96,12 +81,6 @@ namespace TaskTracker.Tests.Application.Services
             _mockCardRepository.Setup(r => r.GetByIdAsync(cardDto.Id, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(card);
 
-            _mockCardMapper.Setup(m => m.MapPartial(cardDto, card))
-                .Callback(() => card.Title = cardDto.Title); // Simulate the mapping
-
-            _mockCardMapper.Setup(m => m.ToDto(card))
-                .Returns(cardDto);
-
             // Act
             var result = await _cardService.UpdateCard(cardDto, CancellationToken.None);
 
@@ -110,8 +89,6 @@ namespace TaskTracker.Tests.Application.Services
             Assert.Equal("Updated Card", card.Title);
             _mockCardRepository.Verify(r => r.GetByIdAsync(cardDto.Id, It.IsAny<CancellationToken>()), Times.Once);
             _mockCardRepository.Verify(r => r.UpdateAsync(card, It.IsAny<CancellationToken>()), Times.Once);
-            _mockCardMapper.Verify(m => m.MapPartial(cardDto, card), Times.Once);
-            _mockCardMapper.Verify(m => m.ToDto(card), Times.Once);
         }
 
         [Fact]
@@ -233,14 +210,6 @@ namespace TaskTracker.Tests.Application.Services
 
             _mockCardRepository.Setup(r => r.GetCardsByColumns(columnIds, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(cards);
-
-            for (int i = 0; i < cards.Count; i++)
-            {
-                var card = cards[i];
-                var cardDto = cardDtos[i];
-                _mockCardMapper.Setup(m => m.ToDto(card))
-                    .Returns(cardDto);
-            }
 
             // Act
             var result = await _cardService.GetCardsByColumns(columnIds, CancellationToken.None);

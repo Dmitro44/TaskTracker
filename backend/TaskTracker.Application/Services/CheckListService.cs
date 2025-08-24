@@ -1,8 +1,7 @@
 using TaskTracker.Application.DTOs.CheckList;
 using TaskTracker.Application.DTOs.CheckListItem;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
-using TaskTracker.Domain.Entities;
+using TaskTracker.Application.Mappers;
 using TaskTracker.Domain.Interfaces.Repositories;
 
 namespace TaskTracker.Application.Services;
@@ -10,26 +9,22 @@ namespace TaskTracker.Application.Services;
 public class CheckListService : ICheckListService
 {
     private readonly ICheckListRepository _checkListRepository;
-    private readonly IGenericMapper<CheckListDto, CheckList> _checkListMapper;
-    private readonly IGenericMapper<CheckListItemDto, CheckListItem> _checkListItemMapper;
 
-    public CheckListService(ICheckListRepository checkListRepository, IGenericMapper<CheckListDto, CheckList> checkListMapper, IGenericMapper<CheckListItemDto, CheckListItem> checkListItemMapper)
+    public CheckListService(ICheckListRepository checkListRepository)
     {
         _checkListRepository = checkListRepository;
-        _checkListMapper = checkListMapper;
-        _checkListItemMapper = checkListItemMapper;
     }
     
     public async Task CreateCheckList(CheckListDto dto, CancellationToken ct)
     {
-        var checkList = _checkListMapper.ToEntity(dto);
+        var checkList = dto.ToEntity();
 
         await _checkListRepository.AddAsync(checkList, ct);
     }
 
     public async Task CreateCheckListItem(CheckListItemDto checkListItemDto, CancellationToken ct)
     {
-        var checkListItem = _checkListItemMapper.ToEntity(checkListItemDto);
+        var checkListItem = checkListItemDto.ToEntity();
         
         await _checkListRepository.AddItemAsync(checkListItem, ct); 
     }
@@ -38,11 +33,11 @@ public class CheckListService : ICheckListService
     {
         var cliToUpdate = await _checkListRepository.GetItemByIdAsync(clItemId, ct);
         if (cliToUpdate is null) throw new InvalidOperationException($"CheckListItem with ID {clItemId} not found");
-        
-        _checkListItemMapper.MapPartial(checkListItemDto, cliToUpdate);
+
+        cliToUpdate.UpdateFromDto(checkListItemDto);
 
         await _checkListRepository.UpdateCheckListItemAsync(cliToUpdate, ct);
         
-        return _checkListItemMapper.ToDto(cliToUpdate);   
+        return cliToUpdate.ToDto();   
     }
 }

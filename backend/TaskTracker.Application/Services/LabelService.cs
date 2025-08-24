@@ -1,7 +1,6 @@
 using TaskTracker.Application.DTOs;
 using TaskTracker.Application.Interfaces;
-using TaskTracker.Application.Interfaces.Mapping;
-using TaskTracker.Domain.Entities;
+using TaskTracker.Application.Mappers;
 using TaskTracker.Domain.Interfaces.Repositories;
 
 namespace TaskTracker.Application.Services;
@@ -9,17 +8,15 @@ namespace TaskTracker.Application.Services;
 public class LabelService : ILabelService
 {
     private readonly ILabelRepository _labelRepository;
-    private readonly IGenericMapper<LabelDto, Label> _labelMapper;
 
-    public LabelService(ILabelRepository labelRepository, IGenericMapper<LabelDto, Label> labelMapper)
+    public LabelService(ILabelRepository labelRepository)
     {
         _labelRepository = labelRepository;
-        _labelMapper = labelMapper;
     }
     
     public async Task Create(LabelDto dto, CancellationToken ct)
     {
-        var label = _labelMapper.ToEntity(dto);
+        var label = dto.ToEntity();
 
         await _labelRepository.AddAsync(label, ct);
     }
@@ -28,7 +25,7 @@ public class LabelService : ILabelService
     {
         var labels = await _labelRepository.GetAllByBoardAsync(boardId, ct);
         
-        return labels.Select(l => _labelMapper.ToDto(l));
+        return labels.Select(l => l.ToDto());
     }
 
     public async Task AttachLabelToCard(Guid cardId, Guid labelId, CancellationToken ct)
@@ -45,6 +42,6 @@ public class LabelService : ILabelService
     {
         var labels = await _labelRepository.GetAllByCard(cardId, ct);
         
-        return labels.Select(l => _labelMapper.ToDto(l));
+        return labels.Select(l => l.ToDto());
     }
 }
