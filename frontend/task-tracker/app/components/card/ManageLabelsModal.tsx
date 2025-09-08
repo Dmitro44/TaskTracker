@@ -88,7 +88,7 @@ export default function ManageLabelsModal({
                     isClosable: true,
                 });
                 
-                setSelectedLabelIds(oldSelectedIds);
+                setSelectedLabelIds(oldSelectedLabelIds);
             }
         } else {
             setSelectedLabelIds(newlySelectedIds);

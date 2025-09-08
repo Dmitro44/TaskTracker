@@ -93,7 +93,7 @@ export default function CardModalPage( props: CardModalPageProps) {
     const handleLabelsUpdatedFromModal = async () => {
         const newCardLabels = await fetchCard();
         
-        if (cardId && boardId) {
+        if (cardId && boardId && newCardLabels) {
             eventBus.emit(`cardLabelsUpdated`, { 
                 cardId: cardId,
                 boardId: boardId,
